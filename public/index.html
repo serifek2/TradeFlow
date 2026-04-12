@@ -1,0 +1,2021 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Demo - Barkodlu Fatura & Stok</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <link rel="stylesheet" href="/styles/light.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" />
+  <script src="/js/api-base.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 28px 18px 40px;
+      overflow-x: hidden;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .app {
+      width: 100%;
+      max-width: 1140px;
+    }
+    .app-hero {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 22px;
+      padding: 4px 2px 0;
+    }
+    .app-hero-main {
+      flex: 1;
+      min-width: 0;
+    }
+    .app-hero-accent {
+      flex-shrink: 0;
+      width: 4px;
+      min-height: 52px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #6366f1 0%, #4f46e5 40%, #0ea5e9 100%);
+      box-shadow: 0 4px 16px rgba(79, 70, 229, 0.35);
+    }
+    h1 {
+      font-size: 26px;
+      margin: 0 0 4px;
+    }
+    h1.app-title {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      font-size: clamp(16px, 2.4vw, 22px);
+      font-weight: 700;
+      line-height: 1.28;
+      letter-spacing: -0.03em;
+      background: linear-gradient(115deg, #0f172a 0%, #1e3a5f 35%, #3730a3 70%, #4f46e5 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: var(--text-heading);
+    }
+    @supports not (background-clip: text) {
+      h1.app-title {
+        -webkit-text-fill-color: unset;
+        color: var(--text-heading);
+      }
+    }
+    .app-hero-tagline {
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(67, 56, 202, 0.28);
+      color: #3730a3;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    .badge span.dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #6366f1;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25);
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.6fr);
+      gap: 28px;
+      margin-top: 8px;
+    }
+    .layout.layout--single {
+      grid-template-columns: 1fr;
+      justify-items: center;
+    }
+    .layout.layout--single > .card:first-child {
+      max-width: 720px;
+      width: 100%;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .app-hero-accent { display: none; }
+      .app-hero { gap: 12px; }
+    }
+    .card {
+      padding: 24px 26px 22px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 22px !important;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.95), transparent);
+      pointer-events: none;
+    }
+    .card-inner {
+      position: relative;
+      z-index: 1;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 22px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+    }
+    .card-title {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-heading);
+    }
+    .card-caption {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .demo-chip {
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px dashed rgba(148,163,184,0.6);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .field-label {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+    }
+    .field-label span.sub {
+      font-weight: 400;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+    .row-grow { flex: 1; }
+    .input {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--card-soft);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+    }
+    .input:focus {
+      border-color: rgba(67, 56, 202, 0.5);
+      background: var(--card-elevated);
+      box-shadow:
+        inset 0 1px 2px rgba(15, 23, 42, 0.04),
+        0 0 0 4px rgba(99, 102, 241, 0.15);
+    }
+    .input::placeholder { color: var(--muted-soft); }
+    textarea.input {
+      font-family: inherit;
+      resize: vertical;
+    }
+    .button {
+      border: none;
+      outline: none;
+      cursor: pointer;
+      border-radius: 14px;
+      padding: 12px 24px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: linear-gradient(145deg, #818cf8 0%, #6366f1 35%, #4f46e5 70%, #4338ca 100%);
+      color: #ffffff;
+      box-shadow:
+        0 6px 20px rgba(79, 70, 229, 0.42),
+        0 2px 4px rgba(15, 23, 42, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28);
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, filter 0.2s ease;
+      white-space: nowrap;
+    }
+    .button:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.03);
+      box-shadow:
+        0 12px 32px rgba(79, 70, 229, 0.48),
+        0 4px 8px rgba(15, 23, 42, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    }
+    .button:active {
+      transform: translateY(0);
+      filter: brightness(0.98);
+      box-shadow:
+        0 3px 12px rgba(79, 70, 229, 0.4),
+        inset 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+    .button-ghost {
+      background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, var(--card-soft) 100%);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+      font-size: 13px;
+      padding-inline: 20px;
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      transition: all 0.2s ease;
+    }
+    .button-ghost:hover {
+      background: var(--card-elevated);
+      border-color: var(--border-subtle);
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+    }
+    .button-ghost span.icon {
+      font-size: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    thead th {
+      text-align: left;
+      font-weight: 600;
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      color: var(--muted);
+      padding: 12px 10px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: linear-gradient(180deg, rgba(55, 48, 163, 0.1) 0%, rgba(55, 48, 163, 0.04) 100%);
+    }
+    thead tr th:first-child { border-top-left-radius: 12px; }
+    thead tr th:last-child { border-top-right-radius: 12px; }
+    tbody td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text);
+    }
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+    .qty-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      border-radius: 10px;
+      background: var(--card-soft);
+      border: 1px solid var(--border-subtle);
+    }
+    .qty-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+    }
+    .qty-btn:hover {
+      background: rgba(67, 56, 202, 0.12);
+      color: var(--text-heading);
+    }
+    .subtotal-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 10px;
+      font-size: 14px;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .subtotal-label {
+      color: var(--text-secondary);
+    }
+    .subtotal-value {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text-heading);
+    }
+    .status {
+      margin-top: 12px;
+      font-size: 13px;
+      min-height: 18px;
+    }
+    .status.error { color: var(--danger); }
+    .status.success { color: var(--success); }
+    .pill-group {
+      display: inline-flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card-soft);
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+    }
+    .pill input {
+      margin: 0;
+      accent-color: var(--accent);
+    }
+    .pill.active {
+      border-color: rgba(67, 56, 202, 0.45);
+      background: linear-gradient(135deg, rgba(67, 56, 202, 0.18) 0, rgba(79, 70, 229, 0.12) 100%);
+      color: var(--text-heading);
+      font-weight: 600;
+      box-shadow: 0 0 0 1px rgba(67, 56, 202, 0.2);
+    }
+    .invoice-summary {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .tag {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--card-soft);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .qr-wrapper {
+      margin-top: 10px;
+      border-radius: 16px;
+      padding: 16px;
+      background: linear-gradient(145deg, var(--card-soft) 0%, rgba(255,255,255,0.4) 100%);
+      border: 1px dashed rgba(148, 163, 184, 0.65);
+    }
+    #qr-reader {
+      width: 100%;
+      min-height: 180px;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal {
+      background: linear-gradient(145deg, var(--card-elevated) 0%, var(--card) 100%);
+      border-radius: 24px;
+      padding: 28px;
+      border: 1px solid var(--border-subtle);
+      max-width: 400px;
+      width: 90%;
+      box-shadow:
+        0 24px 56px rgba(15, 23, 42, 0.14),
+        0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+      backdrop-filter: blur(12px);
+      color: var(--text);
+    }
+    .modal-title {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+      color: var(--text-heading);
+    }
+    .modal-body {
+      margin-bottom: 20px;
+    }
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      background-color: rgba(0, 0, 0, 0.85);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+    .login-overlay.hidden {
+      display: none;
+    }
+    .login-box {
+      background: linear-gradient(145deg, var(--card-elevated) 0%, var(--card) 100%);
+      border-radius: 24px;
+      padding: 32px;
+      border: 1px solid var(--border-subtle);
+      max-width: 400px;
+      width: 90%;
+      box-shadow:
+        0 24px 56px rgba(15, 23, 42, 0.14),
+        0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+      backdrop-filter: blur(12px);
+      color: var(--text);
+    }
+    .login-title {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+      text-align: center;
+      color: var(--text-heading);
+    }
+    .login-subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .visit-modal {
+      display: none;
+    }
+    .visit-modal.show {
+      display: flex;
+    }
+    .registration-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      background-color: rgba(0, 0, 0, 0.85);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+    .registration-overlay.show {
+      display: flex;
+    }
+    .login-footer-link {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .login-footer-link a {
+      color: rgba(99,102,241,0.9);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .login-footer-link a:hover {
+      color: rgba(99,102,241,1);
+      text-decoration: underline;
+    }
+
+    /* Sol panel (bilgi & ayarlar) */
+    .left-panel-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(4px);
+      z-index: 1500;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+    .left-panel-backdrop.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .left-panel {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 300px;
+      max-width: 85vw;
+      height: 100vh;
+      z-index: 1600;
+      transform: translateX(-100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .left-panel.show {
+      transform: translateX(0);
+    }
+    .left-panel-header {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .left-panel-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .left-panel-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 8px;
+      font-size: 20px;
+      line-height: 1;
+    }
+    .left-panel-close:hover {
+      color: var(--text-heading);
+      background: var(--accent-soft);
+    }
+    .left-panel-section {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .left-panel-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .left-panel-user-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--accent-soft);
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+    .left-panel-user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .left-panel-user-name {
+      font-weight: 500;
+      color: var(--text);
+    }
+    .left-panel-user-role {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .left-panel-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      color: var(--text);
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .left-panel-menu-item:hover {
+      background: var(--accent-soft);
+    }
+    .btn-menu-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      background: linear-gradient(160deg, rgba(255,255,255,0.9) 0%, var(--card-soft) 100%);
+      color: var(--text-heading);
+      cursor: pointer;
+      margin-right: 4px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255,255,255,0.8);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .btn-menu-toggle:hover {
+      background: var(--card-elevated);
+      border-color: var(--border-subtle);
+      transform: scale(1.04);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+    }
+  </style>
+</head>
+<body>
+  <!-- Sol panel: Bilgi & Ayarlar -->
+  <div id="left-panel-backdrop" class="left-panel-backdrop" onclick="closeLeftPanel()"></div>
+  <aside id="left-panel" class="left-panel">
+    <div class="left-panel-header">
+      <span class="left-panel-title">Menü</span>
+      <button type="button" class="left-panel-close" onclick="closeLeftPanel()" aria-label="Kapat">&times;</button>
+    </div>
+    <div class="left-panel-section">
+      <div class="left-panel-section-title">Giriş yapan kullanıcı</div>
+      <div id="left-panel-user" class="left-panel-user-row" style="display:none;">
+        <div id="left-panel-avatar" class="left-panel-user-avatar">?</div>
+        <div>
+          <div id="left-panel-username" class="left-panel-user-name">—</div>
+          <div id="left-panel-role" class="left-panel-user-role">—</div>
+        </div>
+      </div>
+      <div id="left-panel-guest" style="font-size:13px;color:var(--muted);">Giriş yapmadınız.</div>
+    </div>
+    <div class="left-panel-section">
+      <div class="left-panel-section-title">Ayarlar</div>
+      <a href="/dashboard.html" class="left-panel-menu-item">Dashboard</a>
+      <a href="/finance.html" class="left-panel-menu-item" id="left-panel-finance">Finans</a>
+      <a href="/stock.html" class="left-panel-menu-item" id="left-panel-stock">Stok Takibi</a>
+      <a href="/production.html" class="left-panel-menu-item" id="left-panel-production">Üretim (Barkod / QR)</a>
+      <a href="/returns.html" class="left-panel-menu-item" id="left-panel-returns">Satış İadeleri</a>
+      <a href="/stock-movements.html" class="left-panel-menu-item" id="left-panel-stock-movements">Stok Hareketleri</a>
+      <a href="/customers.html" class="left-panel-menu-item" id="left-panel-customers">Müşteriler</a>
+      <a href="/suppliers.html" class="left-panel-menu-item" id="left-panel-suppliers">Tedarikçiler</a>
+  <button type="button" class="left-panel-menu-item" id="left-panel-add-user" onclick="closeLeftPanel(); openAddUserModal();" style="display:none;">Kullanıcı Ekle</button>
+      <button type="button" class="left-panel-menu-item" id="left-panel-visit" onclick="closeLeftPanel(); openVisitModal();" style="display:none;">Ziyaret Ekle</button>
+      <button type="button" class="left-panel-menu-item" onclick="closeLeftPanel(); handleLogout();">Çıkış Yap</button>
+    </div>
+  </aside>
+
+  <!-- Login Overlay -->
+  <div id="login-overlay" class="login-overlay">
+    <div class="login-box">
+      <div class="login-title">Giriş Yap</div>
+      <div class="login-subtitle">Sisteme erişim için giriş yapın.</div>
+      <div class="modal-body">
+        <div class="field-label">Kullanıcı Adı</div>
+        <input id="login-username" class="input" placeholder="Kullanıcı adınızı girin" style="margin-bottom:16px;" />
+        <div class="field-label">Şifre</div>
+        <input id="login-password" type="password" class="input" placeholder="Şifrenizi girin" style="margin-bottom:20px;" />
+        <div id="login-error" class="status error" style="margin-bottom:16px; text-align:center;"></div>
+      </div>
+      <div class="modal-footer" style="justify-content:center;">
+        <button class="button" onclick="handleLogin()" style="width:100%;">Giriş Yap</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Yeni kullanıcı ekleme (sadece admin) -->
+  <div id="registration-overlay" class="registration-overlay">
+    <div class="login-box">
+      <div class="login-title">Yeni Kullanıcı Ekle</div>
+      <div class="login-subtitle">Kullanıcı bilgileri ve hangi alanla ilgileneceğini seçin</div>
+      <div class="modal-body">
+        <div class="field-label">Ad Soyad <span style="color:var(--danger);">*</span></div>
+        <input id="reg-fullName" class="input" placeholder="Ad ve soyad" style="margin-bottom:16px;" />
+        <div class="field-label">Kullanıcı Adı <span style="color:var(--danger);">*</span> <span style="font-weight:normal;color:var(--muted);">(ad.soyad)</span></div>
+        <input id="reg-username" class="input" placeholder="örn: ahmet.yilmaz" style="margin-bottom:4px;" />
+        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Ad soyad yazınca otomatik önerilir</div>
+        <div class="field-label">Şifre <span style="color:var(--danger);">*</span></div>
+        <input id="reg-password" type="password" class="input" placeholder="Min 8 karakter, harf ve rakam" style="margin-bottom:16px;" />
+        <div class="field-label">Görev / Rol <span style="color:var(--danger);">*</span></div>
+        <select id="reg-role" class="input" style="margin-bottom:16px;">
+          <option value="kasa">Satış (Kasa)</option>
+          <option value="depo">Depo</option>
+          <option value="tedarik">Tedarik</option>
+        </select>
+        <div class="field-label">Telefon <span style="color:var(--muted);">(Opsiyonel)</span></div>
+        <input id="reg-phone" class="input" placeholder="Telefon" style="margin-bottom:20px;" />
+        <div id="reg-error" class="status error" style="margin-bottom:16px; text-align:center;"></div>
+        <div id="reg-success" class="status success" style="margin-bottom:16px; text-align:center;"></div>
+      </div>
+      <div class="modal-footer" style="justify-content:center;">
+        <button class="button button-ghost" onclick="closeRegistration()" style="margin-right:8px;">İptal</button>
+        <button class="button" onclick="handleRegister()" style="flex:1;">Kullanıcı Ekle</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app">
+      <header class="app-hero">
+        <button type="button" class="btn-menu-toggle" onclick="openLeftPanel()" aria-label="Menüyü aç">&#9776;</button>
+        <div class="app-hero-accent" aria-hidden="true"></div>
+        <div class="app-hero-main">
+          <h1 class="app-title">Toptancılar için Entegre Stok, Satış, Muhasebe ve Analitik Programı</h1>
+          <p class="app-hero-tagline">Barkod · Stok · Fatura — tek ekranda akıcı iş akışı</p>
+        </div>
+      </header>
+
+    <div class="layout" id="main-layout">
+      <!-- Sol taraf: Ürün ekleme -->
+      <div class="card">
+        <div class="card-inner">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Ürün Ekleme</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="row-grow">
+              <div class="field-label">Barkod / QR</div>
+              <input id="barcode-input" class="input" placeholder="Manuel giriş veya kameradan barkod / QR okuyabilirsiniz." />
+            </div>
+            <button class="button" onclick="handleAddProduct()">
+              + Ürün Ekle
+            </button>
+          </div>
+
+          <div class="row" style="justify-content: flex-end; margin-top: 2px;">
+            <button class="button button-ghost" onclick="toggleCamera()">
+              Kameradan Tara
+            </button>
+          </div>
+
+          <div id="qr-container" class="qr-wrapper" style="display:none;">
+            <div class="field-label">Kamera Okuyucu <span class="sub">(demo)</span></div>
+            <div id="qr-reader"></div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Ürün</th>
+                <th style="width:130px;">Miktar</th>
+                <th style="width:110px;">Birim Fiyat</th>
+                <th style="width:110px;">Tutar</th>
+              </tr>
+            </thead>
+            <tbody id="items-body">
+              <!-- JS ile dolduruluyor -->
+            </tbody>
+          </table>
+
+          <div class="subtotal-row">
+            <div class="subtotal-label">Ara Toplam</div>
+            <div class="subtotal-value"><span id="subtotal">0.00</span> ₺</div>
+          </div>
+
+          <div id="status-products" class="status"></div>
+        </div>
+      </div>
+
+      <!-- Sağ taraf: Fatura bilgileri (yetkisi olanlara gösterilir) -->
+      <div class="card" id="invoice-card">
+        <div class="card-inner">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Fatura Bilgileri</div>
+            </div>
+          </div>
+
+          <div class="field-label" id="party-label">Müşteri / Tedarikçi</div>
+          <div class="row" style="margin-bottom:10px;flex-direction:column;align-items:stretch;">
+            <select id="party-select" class="input" style="margin-bottom:8px;">
+              <option value="">-- Seçin veya aşağıya manuel yazın --</option>
+            </select>
+            <input id="customer-name" class="input" placeholder="Müşteri veya tedarikçi adı" />
+          </div>
+
+          <div class="field-label">Fatura Tarihi</div>
+          <div class="row" style="margin-bottom:10px;">
+            <input id="invoice-date" type="date" class="input" />
+          </div>
+
+          <div class="field-label">Fatura Türü</div>
+          <div class="pill-group" id="type-pills">
+            <label class="pill active">
+              <input type="radio" name="invoice-type" value="SATIS" checked />
+              Satış
+            </label>
+            <label class="pill">
+              <input type="radio" name="invoice-type" value="ALIS" />
+              Alış
+            </label>
+          </div>
+
+          <div style="margin-top:18px;">
+            <button class="button" style="width:100%;" onclick="handleCreateInvoice()">
+              Faturayı Oluştur
+            </button>
+          </div>
+
+          <div id="status-invoice" class="status" style="margin-top:14px;"></div>
+
+          <div id="export-options" style="display:none; margin-top:14px;">
+            <div class="field-label" style="margin-bottom:8px;">Dışa Aktar</div>
+            <div style="display:flex; gap:8px;">
+              <button class="button button-ghost" onclick="exportInvoice('excel')" style="flex:1;">
+                Excel
+              </button>
+              <button class="button button-ghost" onclick="exportInvoice('pdf')" style="flex:1;">
+                PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <a id="download-link" style="display:none;"></a>
+  </div>
+
+  <!-- Modal for adding new product -->
+  <div id="new-product-modal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-title">Yeni Ürün Ekle</div>
+      <div class="modal-body">
+        <div class="field-label">Barkod</div>
+        <input id="modal-barcode" class="input" style="margin-bottom:12px;" readonly />
+        <div class="field-label">Ürün Adı <span style="color:var(--danger);">*</span></div>
+        <input id="modal-name" class="input" style="margin-bottom:12px;" placeholder="Ürün adını girin" />
+        <div class="field-label">Birim Fiyat (₺) <span style="color:var(--danger);">*</span></div>
+        <input id="modal-price" type="number" step="0.01" min="0" class="input" placeholder="0.00" style="margin-bottom:12px;" />
+        <div class="field-label">Son Tüketim Tarihi <span style="color:var(--muted); font-weight:normal;">(Opsiyonel)</span></div>
+        <input id="modal-expiry" type="date" class="input" />
+      </div>
+      <div class="modal-footer">
+        <button class="button button-ghost" onclick="closeNewProductModal()">İptal</button>
+        <button class="button" onclick="saveNewProduct()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for adding visit -->
+  <div id="visit-modal" class="modal-overlay visit-modal">
+    <div class="modal">
+      <div class="modal-title">Ziyaret Ekle</div>
+      <div class="modal-body">
+        <div class="field-label">Müşteri Adı <span style="color:var(--danger);">*</span></div>
+        <input id="visit-customer-name" class="input" style="margin-bottom:16px;" placeholder="Müşteri adını girin" />
+        <div class="field-label">Ziyaret Notu <span style="color:var(--danger);">*</span></div>
+        <textarea id="visit-note" class="input" style="margin-bottom:12px; min-height:100px; border-radius:10px; resize:vertical; font-family:inherit;" placeholder="Ziyaret notunu girin"></textarea>
+        <div id="visit-status" class="status" style="margin-top:12px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="button button-ghost" onclick="closeVisitModal()">İptal</button>
+        <button class="button" onclick="saveVisit()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- html5-qrcode (kamera için) -->
+  <script src="https://unpkg.com/html5-qrcode" defer></script>
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="/js/jspdf-noto.js"></script>
+  <!-- SheetJS for Excel export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <script>
+    window.addEventListener('error', function(e) {
+      console.error('Global error:', e.error, e.filename, e.lineno);
+    });
+    
+    const items = [];
+    let html5QrCode = null;
+    let qrActive = false;
+    let lastInvoiceData = null;
+    let currentUser = null;
+
+    function authHeaders() {
+      const t = sessionStorage.getItem('token');
+      return t ? { 'Authorization': 'Bearer ' + t } : {};
+    }
+
+    (function () {
+      var savedUser = sessionStorage.getItem('loggedInUser');
+      var savedToken = sessionStorage.getItem('token');
+      if (savedUser && savedToken) {
+        try {
+          currentUser = JSON.parse(savedUser);
+          document.getElementById('login-overlay').classList.add('hidden');
+          updateMenuByRole();
+        } catch (e) {
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('loggedInUser');
+          currentUser = null;
+        }
+      } else {
+        currentUser = null;
+      }
+    })();
+
+    function openLeftPanel() {
+      refreshLeftPanelUser();
+      document.getElementById('left-panel-backdrop').classList.add('show');
+      document.getElementById('left-panel').classList.add('show');
+    }
+    function closeLeftPanel() {
+      document.getElementById('left-panel-backdrop').classList.remove('show');
+      document.getElementById('left-panel').classList.remove('show');
+    }
+    function refreshLeftPanelUser() {
+      var userEl = document.getElementById('left-panel-user');
+      var guestEl = document.getElementById('left-panel-guest');
+      var addUserBtn = document.getElementById('left-panel-add-user');
+      var visitBtn = document.getElementById('left-panel-visit');
+      if (currentUser) {
+        if (userEl) { userEl.style.display = ''; }
+        if (guestEl) { guestEl.style.display = 'none'; }
+        var un = (currentUser.username || '').toString();
+        var roleLabel = { admin: 'Yönetici', kasa: 'Kasa', depo: 'Depo', tedarik: 'Tedarik' }[currentUser.role] || currentUser.role;
+        var initial = un.charAt(0).toUpperCase() || '?';
+        var el = document.getElementById('left-panel-avatar');
+        if (el) el.textContent = initial;
+        el = document.getElementById('left-panel-username');
+        if (el) el.textContent = un;
+        el = document.getElementById('left-panel-role');
+        if (el) el.textContent = roleLabel;
+        if (addUserBtn) addUserBtn.style.display = (currentUser.role === 'admin') ? '' : 'none';
+        var finLink = document.getElementById('left-panel-finance');
+        if (finLink) finLink.style.display = (currentUser.role === 'admin' || currentUser.role === 'kasa' || currentUser.role === 'tedarik' || currentUser.role === 'depo') ? '' : 'none';
+        if (visitBtn) visitBtn.style.display = (currentUser.role === 'admin' || currentUser.role === 'kasa') ? '' : 'none';
+        var returnsPanel = document.getElementById('left-panel-returns');
+        var stockMovPanel = document.getElementById('left-panel-stock-movements');
+        var prodPanel = document.getElementById('left-panel-production');
+        var custPanel = document.getElementById('left-panel-customers');
+        var suppPanel = document.getElementById('left-panel-suppliers');
+        if (returnsPanel) returnsPanel.style.display = (currentUser.role === 'admin' || currentUser.role === 'kasa') ? '' : 'none';
+        if (stockMovPanel) stockMovPanel.style.display = (currentUser.role === 'admin' || currentUser.role === 'depo') ? '' : 'none';
+        if (prodPanel) prodPanel.style.display = (currentUser.role === 'admin' || currentUser.role === 'depo') ? '' : 'none';
+        if (custPanel) custPanel.style.display = (currentUser.role === 'admin' || currentUser.role === 'kasa') ? '' : 'none';
+        if (suppPanel) suppPanel.style.display = (currentUser.role === 'admin' || currentUser.role === 'tedarik') ? '' : 'none';
+      } else {
+        if (userEl) { userEl.style.display = 'none'; }
+        if (guestEl) { guestEl.style.display = ''; }
+        if (addUserBtn) addUserBtn.style.display = 'none';
+        var finLink = document.getElementById('left-panel-finance');
+        if (finLink) finLink.style.display = 'none';
+        if (visitBtn) visitBtn.style.display = 'none';
+        var returnsPanel = document.getElementById('left-panel-returns');
+        var stockMovPanel = document.getElementById('left-panel-stock-movements');
+        var prodPanel = document.getElementById('left-panel-production');
+        var custPanel = document.getElementById('left-panel-customers');
+        var suppPanel = document.getElementById('left-panel-suppliers');
+        if (returnsPanel) returnsPanel.style.display = '';
+        if (stockMovPanel) stockMovPanel.style.display = '';
+        if (prodPanel) prodPanel.style.display = '';
+        if (custPanel) custPanel.style.display = '';
+        if (suppPanel) suppPanel.style.display = '';
+      }
+    }
+    function handleLogout() {
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('loggedInUser');
+      sessionStorage.removeItem('homeAlertsShown');
+      currentUser = null;
+      document.getElementById('login-overlay').classList.remove('hidden');
+      refreshLeftPanelUser();
+    }
+
+    function updateMenuByRole() {
+      if (!currentUser) { refreshLeftPanelUser(); return; }
+      var role = currentUser.role;
+      var dashLinks = document.querySelectorAll('a[href="/dashboard.html"]');
+      var financeLinks = document.querySelectorAll('a[href="/finance.html"]');
+      var returnsLinks = document.querySelectorAll('a[href="/returns.html"]');
+      var stockMovLinks = document.querySelectorAll('a[href="/stock-movements.html"]');
+      var productionLinks = document.querySelectorAll('a[href="/production.html"]');
+      var custLinks = document.querySelectorAll('a[href="/customers.html"]');
+      var suppLinks = document.querySelectorAll('a[href="/suppliers.html"]');
+      dashLinks.forEach(function (el) { el.style.display = ''; });
+      financeLinks.forEach(function (el) { el.style.display = (role === 'admin' || role === 'kasa' || role === 'tedarik' || role === 'depo') ? '' : 'none'; });
+      returnsLinks.forEach(function (el) { el.style.display = (role === 'admin' || role === 'kasa') ? '' : 'none'; });
+      stockMovLinks.forEach(function (el) { el.style.display = (role === 'admin' || role === 'depo') ? '' : 'none'; });
+      productionLinks.forEach(function (el) { el.style.display = (role === 'admin' || role === 'depo') ? '' : 'none'; });
+      custLinks.forEach(function (el) { el.style.display = (role === 'admin' || role === 'kasa') ? '' : 'none'; });
+      suppLinks.forEach(function (el) { el.style.display = (role === 'admin' || role === 'tedarik') ? '' : 'none'; });
+      var addUserBtn = document.getElementById('add-user-btn');
+      if (addUserBtn) addUserBtn.style.display = (role === 'admin') ? '' : 'none';
+      refreshLeftPanelUser();
+      var invoiceCard = document.getElementById('invoice-card');
+      var mainLayout = document.getElementById('main-layout');
+      var hasInvoiceRole = role === 'admin' || role === 'kasa' || role === 'tedarik';
+      if (invoiceCard) invoiceCard.style.display = hasInvoiceRole ? '' : 'none';
+      if (mainLayout) {
+        if (hasInvoiceRole) mainLayout.classList.remove('layout--single');
+        else mainLayout.classList.add('layout--single');
+      }
+
+      var pills = document.getElementById('type-pills');
+      if (pills && hasInvoiceRole) {
+        var satisPill = pills.querySelector('input[value="SATIS"]')?.closest('label');
+        var alisPill = pills.querySelector('input[value="ALIS"]')?.closest('label');
+        if (satisPill) satisPill.style.display = (role === 'admin' || role === 'kasa') ? '' : 'none';
+        if (alisPill) alisPill.style.display = (role === 'admin' || role === 'tedarik') ? '' : 'none';
+        if (role === 'kasa' && pills.querySelector('input[value="SATIS"]')) {
+          pills.querySelector('input[value="SATIS"]').checked = true;
+          pills.querySelectorAll('.pill').forEach(function(p) { p.classList.remove('active'); });
+          if (satisPill) satisPill.classList.add('active');
+        }
+        if (role === 'tedarik' && pills.querySelector('input[value="ALIS"]')) {
+          pills.querySelector('input[value="ALIS"]').checked = true;
+          pills.querySelectorAll('.pill').forEach(function(p) { p.classList.remove('active'); });
+          if (alisPill) alisPill.classList.add('active');
+        }
+        if (typeof updatePartySelect === 'function') {
+          updatePartySelect();
+          var partySel = document.getElementById('party-select');
+          var custName = document.getElementById('customer-name');
+          if (partySel) { partySel.value = ''; partySel.selectedIndex = 0; }
+          if (custName) custName.value = '';
+        }
+      }
+    }
+
+    function updatePartySelect() {
+      var typeEl = document.querySelector('input[name="invoice-type"]:checked');
+      var type = typeEl ? typeEl.value : 'SATIS';
+      var sel = document.getElementById('party-select');
+      var labelEl = document.getElementById('party-label');
+      var isAdmin = currentUser && currentUser.role === 'admin';
+      if (labelEl) labelEl.textContent = type === 'SATIS' ? 'Müşteri' : 'Tedarikçi';
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Seçin veya aşağıya manuel yazın</option>';
+
+      function fillOptions(customers, suppliers) {
+        if (!sel.parentNode) return;
+        sel.innerHTML = '<option value="">Seçin veya aşağıya manuel yazın</option>';
+        if (isAdmin) {
+          if (customers && customers.length) {
+            var sepC = document.createElement('option');
+            sepC.disabled = true;
+            sepC.textContent = 'Müşteriler';
+            sel.appendChild(sepC);
+          }
+          (customers || []).forEach(function(p) {
+            var opt = document.createElement('option');
+            opt.value = p.name;
+            opt.textContent = p.name;
+            opt.dataset.id = p.id;
+            opt.dataset.kind = 'customer';
+            sel.appendChild(opt);
+          });
+          if (suppliers && suppliers.length) {
+            var sep = document.createElement('option');
+            sep.disabled = true;
+            sep.textContent = 'Tedarikçiler';
+            sel.appendChild(sep);
+            suppliers.forEach(function(p) {
+              var opt = document.createElement('option');
+              opt.value = p.name;
+              opt.textContent = p.name;
+              opt.dataset.id = p.id;
+              opt.dataset.kind = 'supplier';
+              sel.appendChild(opt);
+            });
+          }
+        } else {
+          var arr = type === 'SATIS' ? (customers || []) : (suppliers || []);
+          arr.forEach(function(p) {
+            var opt = document.createElement('option');
+            opt.value = p.name;
+            opt.textContent = p.name;
+            opt.dataset.id = p.id;
+            sel.appendChild(opt);
+          });
+        }
+      }
+
+      if (isAdmin) {
+        Promise.all([
+          fetch('/api/customers', { headers: authHeaders() }).then(function(r) { return r.json(); }),
+          fetch('/api/suppliers', { headers: authHeaders() }).then(function(r) { return r.json(); })
+        ]).then(function(results) {
+          var custData = results[0] || {};
+          var suppData = results[1] || {};
+          fillOptions(custData.customers || [], suppData.suppliers || []);
+        }).catch(function() {});
+      } else {
+        var url = type === 'SATIS' ? '/api/customers' : '/api/suppliers';
+        fetch(url, { headers: authHeaders() }).then(function(r) { return r.json(); }).then(function(data) {
+          var arr = type === 'SATIS' ? (data.customers || []) : (data.suppliers || []);
+          fillOptions(type === 'SATIS' ? arr : [], type === 'ALIS' ? arr : []);
+        }).catch(function() {});
+      }
+    }
+
+    function setStatus(id, message, type) {
+      const el = document.getElementById(id);
+      el.textContent = message || '';
+      el.className = 'status ' + (type || '');
+    }
+
+    // 🔐 LOGIN FUNCTIONS
+    async function handleLogin() {
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      const errorEl = document.getElementById('login-error');
+
+      if (!username || !password) {
+        setStatus('login-error', 'Lütfen kullanıcı adı ve şifre girin', 'error');
+        return;
+      }
+      if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
+        setStatus('login-error', 'Şifre çok zayıf. En az 8 karakter, harf ve rakam içermelidir.', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          currentUser = { username: data.username, role: data.role };
+          sessionStorage.setItem('loggedInUser', JSON.stringify(currentUser));
+          if (data.token) sessionStorage.setItem('token', data.token);
+
+          document.getElementById('login-overlay').classList.add('hidden');
+
+          updateMenuByRole();
+          checkExpirationAlerts();
+        } else {
+          setStatus('login-error', data.error || 'Giriş başarısız', 'error');
+        }
+      } catch (err) {
+        console.error('Login error:', err);
+        setStatus('login-error', 'Sunucuya bağlanırken hata oluştu', 'error');
+      }
+    }
+
+    function openAddUserModal() {
+      var regOverlay = document.getElementById('registration-overlay');
+      if (!regOverlay) return;
+      setStatus('reg-error', '', '');
+      setStatus('reg-success', '', '');
+      document.getElementById('reg-fullName').value = '';
+      document.getElementById('reg-username').value = '';
+      document.getElementById('reg-password').value = '';
+      document.getElementById('reg-phone').value = '';
+      var roleEl = document.getElementById('reg-role');
+      if (roleEl) roleEl.value = 'kasa';
+      regOverlay.classList.add('show');
+    }
+
+    function closeRegistration() {
+      document.getElementById('registration-overlay').classList.remove('show');
+      setStatus('reg-error', '', '');
+      setStatus('reg-success', '', '');
+    }
+
+    async function handleRegister() {
+      const fullName = document.getElementById('reg-fullName').value.trim();
+      const username = document.getElementById('reg-username').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const phone = document.getElementById('reg-phone').value.trim();
+
+      setStatus('reg-error', '', '');
+      setStatus('reg-success', '', '');
+
+      if (!fullName || !username || !password) {
+        setStatus('reg-error', 'Lütfen tüm zorunlu alanları doldurun', 'error');
+        return;
+      }
+
+      if (username.length < 5) {
+        setStatus('reg-error', 'Kullanıcı adı en az 5 karakter olmalıdır', 'error');
+        return;
+      }
+      if (!/^[a-zA-ZçğıöşüÇĞİÖŞÜ]{2,}[._][a-zA-ZçğıöşüÇĞİÖŞÜ]{2,}$/.test(username)) {
+        setStatus('reg-error', 'Kullanıcı adı ad.soyad formatında olmalı (örn: ahmet.yilmaz)', 'error');
+        return;
+      }
+
+      if (password.length < 8) {
+        setStatus('reg-error', 'Şifre en az 8 karakter olmalıdır', 'error');
+        return;
+      }
+      if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
+        setStatus('reg-error', 'Şifre hem harf hem rakam içermelidir', 'error');
+        return;
+      }
+
+      var roleEl = document.getElementById('reg-role');
+      var role = roleEl ? roleEl.value : 'kasa';
+
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fullName, username, password, phone: phone || null, role })
+        });
+
+        const data = await res.json();
+
+        if (res.status === 201 && data.ok) {
+          setStatus('reg-success', 'Kullanıcı eklendi.', 'success');
+          setTimeout(function() {
+            closeRegistration();
+          }, 1500);
+        } else {
+          setStatus('reg-error', data.error || 'Kayıt başarısız', 'error');
+        }
+      } catch (err) {
+        console.error('Registration error:', err);
+        setStatus('reg-error', 'Sunucuya bağlanırken hata oluştu', 'error');
+      }
+    }
+
+    async function checkExpirationAlerts() {
+      if (sessionStorage.getItem('homeAlertsShown') === '1') return;
+      try {
+        const [sktRes, stockRes] = await Promise.all([
+          fetch('/api/alerts/skt', { headers: authHeaders() }),
+          fetch('/api/alerts/stock', { headers: authHeaders() })
+        ]);
+        const sktData = sktRes.ok ? await sktRes.json() : {};
+        const stockData = stockRes.ok ? await stockRes.json() : {};
+        const msgs = [];
+        if (sktData.expired && sktData.expired.length > 0) msgs.push(`${sktData.expired.length} ürün son tüketim tarihi geçmiş`);
+        if (sktData.items && sktData.items.length > 0) msgs.push(`${sktData.items.length} ürün SKT uyarısı`);
+        if (stockData.criticalStock && stockData.criticalStock.length > 0) msgs.push(`${stockData.criticalStock.length} ürün kritik stok`);
+        if (stockData.warningLevel && stockData.warningLevel.length > 0) msgs.push(`${stockData.warningLevel.length} ürün uyarı seviyesinde`);
+        if (msgs.length > 0) alert('Uyarı: ' + msgs.join(' | '));
+        sessionStorage.setItem('homeAlertsShown', '1');
+      } catch (err) {
+        console.error('Alert check error:', err);
+      }
+    }
+
+    if (currentUser) checkExpirationAlerts();
+
+    function openVisitModal() {
+      document.getElementById('visit-modal').classList.add('show');
+    }
+
+    function closeVisitModal() {
+      document.getElementById('visit-modal').classList.remove('show');
+      document.getElementById('visit-customer-name').value = '';
+      document.getElementById('visit-note').value = '';
+      setStatus('visit-status', '', '');
+    }
+
+    async function saveVisit() {
+      const customerName = document.getElementById('visit-customer-name').value.trim();
+      const visitNote = document.getElementById('visit-note').value.trim();
+
+      if (!customerName || !visitNote) {
+        setStatus('visit-status', 'Lütfen tüm alanları doldurun', 'error');
+        return;
+      }
+
+      try {
+        setStatus('visit-status', 'Kaydediliyor...', '');
+        const res = await fetch('/api/visits', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customerName, visitNote })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          setStatus('visit-status', 'Ziyaret başarıyla kaydedildi', 'success');
+          setTimeout(() => {
+            closeVisitModal();
+          }, 1500);
+        } else {
+          setStatus('visit-status', data.error || 'Kayıt başarısız', 'error');
+        }
+      } catch (err) {
+        console.error('Visit save error:', err);
+        setStatus('visit-status', 'Sunucuya bağlanırken hata oluştu', 'error');
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('items-body');
+      const subtotalEl = document.getElementById('subtotal');
+
+      tbody.innerHTML = '';
+      let subtotal = 0;
+
+      items.forEach(item => {
+        const unitPrice = Number(item.unit_price);
+        const qty = Number(item.quantity);
+        const lineTotal = unitPrice * qty;
+
+        item.unit_price = unitPrice;
+        item.quantity = qty;
+        item.lineTotal = lineTotal;
+
+        const tr = document.createElement('tr');
+
+        const tdName = document.createElement('td');
+        tdName.textContent = item.name;
+        tr.appendChild(tdName);
+
+        const tdQty = document.createElement('td');
+        const wrapper = document.createElement('div');
+        wrapper.className = 'qty-badge';
+
+        const minusBtn = document.createElement('button');
+        minusBtn.className = 'qty-btn';
+        minusBtn.textContent = '−';
+        minusBtn.onclick = () => changeQuantity(item.id, -1);
+
+        const span = document.createElement('span');
+        span.textContent = qty;
+
+        const plusBtn = document.createElement('button');
+        plusBtn.className = 'qty-btn';
+        plusBtn.textContent = '+';
+        plusBtn.onclick = () => changeQuantity(item.id, +1);
+
+        wrapper.appendChild(minusBtn);
+        wrapper.appendChild(span);
+        wrapper.appendChild(plusBtn);
+        tdQty.appendChild(wrapper);
+        tr.appendChild(tdQty);
+
+        const tdPrice = document.createElement('td');
+        tdPrice.textContent = unitPrice.toFixed(2) + ' ₺';
+        tr.appendChild(tdPrice);
+
+        const tdTotal = document.createElement('td');
+        tdTotal.textContent = lineTotal.toFixed(2) + ' ₺';
+        tr.appendChild(tdTotal);
+
+        tbody.appendChild(tr);
+
+        subtotal += lineTotal;
+      });
+
+      subtotalEl.textContent = subtotal.toFixed(2);
+    }
+
+    function changeQuantity(id, delta) {
+      const idx = items.findIndex(i => i.id === id);
+      if (idx === -1) return;
+      items[idx].quantity += delta;
+      if (items[idx].quantity <= 0) {
+        items.splice(idx, 1);
+      }
+      renderTable();
+    }
+
+    function playBeepSound() {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+      } catch (err) {
+        console.warn('Beep sound could not be played:', err);
+      }
+    }
+
+    let pendingBarcode = null;
+
+    async function handleAddProduct() {
+      const input = document.getElementById('barcode-input');
+      const barcode = (input.value || '').trim();
+      if (!barcode) {
+        setStatus('status-products', 'Lütfen barkod girin.', 'error');
+        return;
+      }
+
+      try {
+        setStatus('status-products', 'Ürün aranıyor...', '');
+        const res = await fetch('/products/' + encodeURIComponent(barcode), { headers: authHeaders() });
+        if (res.status === 404) {
+          pendingBarcode = barcode;
+          document.getElementById('modal-barcode').value = barcode;
+          document.getElementById('modal-name').value = '';
+          document.getElementById('modal-price').value = '';
+          document.getElementById('modal-expiry').value = '';
+          document.getElementById('new-product-modal').style.display = 'flex';
+          document.getElementById('modal-name').focus();
+          setStatus('status-products', 'Bu barkoda ait ürün bulunamadı. Lütfen ürün bilgilerini girin.', 'error');
+          return;
+        }
+        if (!res.ok) {
+          setStatus('status-products', 'Sunucu hatası (ürün sorgusu).', 'error');
+          return;
+        }
+        const data = await res.json();
+
+        const existing = items.find(i => i.id === data.id);
+        if (existing) {
+          existing.quantity += 1;
+        } else {
+          items.push({
+            id: data.id,
+            barcode: data.barcode,
+            name: data.name,
+            unit_price: Number(data.unit_price),
+            quantity: 1,
+            lineTotal: Number(data.unit_price)
+          });
+        }
+
+        renderTable();
+        setStatus('status-products', `"${data.name}" fatura satırlarına eklendi.`, 'success');
+        input.value = '';
+        playBeepSound();
+      } catch (err) {
+        console.error(err);
+        setStatus('status-products', 'Sunucuya bağlanırken hata oluştu.', 'error');
+      }
+    }
+
+    function closeNewProductModal() {
+      document.getElementById('new-product-modal').style.display = 'none';
+      pendingBarcode = null;
+    }
+
+    async function saveNewProduct() {
+      const barcode = document.getElementById('modal-barcode').value.trim();
+      const name = document.getElementById('modal-name').value.trim();
+      const price = parseFloat(document.getElementById('modal-price').value);
+      const expiryDate = document.getElementById('modal-expiry').value;
+
+      if (!name) {
+        alert('Lütfen ürün adını girin.');
+        document.getElementById('modal-name').focus();
+        return;
+      }
+
+      if (isNaN(price) || price < 0) {
+        alert('Lütfen geçerli bir birim fiyat girin.');
+        document.getElementById('modal-price').focus();
+        return;
+      }
+
+      try {
+        setStatus('status-products', 'Yeni ürün ekleniyor...', '');
+        const payload = {
+          barcode: barcode,
+          name: name,
+          unit_price: price,
+          stock_quantity: 0,
+          min_stock: 0,
+          expiry_date: expiryDate || null
+        };
+        const res = await fetch('/products', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          if (res.status === 409 && errorData.existingBarcode) {
+            setStatus(
+              'status-products',
+              (errorData.error || 'Bu isimde ürün zaten var.') + ' Mevcut barkod: ' + errorData.existingBarcode,
+              'error'
+            );
+          } else {
+            setStatus('status-products', 'Ürün eklenirken hata: ' + (errorData.error || 'Bilinmeyen hata'), 'error');
+          }
+          return;
+        }
+
+        const data = await res.json();
+        closeNewProductModal();
+
+        const existing = items.find(i => i.id === data.id);
+        if (existing) {
+          existing.quantity += 1;
+        } else {
+          items.push({
+            id: data.id,
+            barcode: data.barcode,
+            name: data.name,
+            unit_price: Number(data.unit_price),
+            quantity: 1,
+            lineTotal: Number(data.unit_price)
+          });
+        }
+
+        renderTable();
+        setStatus('status-products', `"${data.name}" veritabanına eklendi ve fatura satırlarına eklendi.`, 'success');
+        document.getElementById('barcode-input').value = '';
+        playBeepSound();
+      } catch (err) {
+        console.error(err);
+        setStatus('status-products', 'Sunucuya bağlanırken hata oluştu.', 'error');
+      }
+    }
+
+    function toggleCamera() {
+      const container = document.getElementById('qr-container');
+      if (qrActive) {
+        stopCamera();
+        container.style.display = 'none';
+        qrActive = false;
+        return;
+      }
+      container.style.display = 'block';
+      startCamera();
+      qrActive = true;
+    }
+
+    function startCamera() {
+      if (!window.Html5Qrcode) {
+        alert('Kamera kütüphanesi henüz yüklenmedi.');
+        return;
+      }
+      if (html5QrCode) {
+        return;
+      }
+      html5QrCode = new Html5Qrcode('qr-reader');
+      html5QrCode.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: 250 },
+        decodedText => {
+          console.log('QR/Barkod okundu:', decodedText);
+          document.getElementById('barcode-input').value = decodedText;
+          handleAddProduct();
+          stopCamera();
+          document.getElementById('qr-container').style.display = 'none';
+          qrActive = false;
+        },
+        err => {
+        }
+      ).catch(err => {
+        console.error('Kamera başlatılamadı', err);
+      });
+    }
+
+    function stopCamera() {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          return html5QrCode.clear();
+        }).catch(() => {}).finally(() => {
+          html5QrCode = null;
+        });
+      }
+    }
+
+    async function handleCreateInvoice() {
+      if (items.length === 0) {
+        setStatus('status-invoice', 'Faturaya eklenmiş ürün yok.', 'error');
+        return;
+      }
+
+      const customerName = document.getElementById('customer-name').value.trim();
+      const dateRaw = document.getElementById('invoice-date').value;
+      const date = (dateRaw && String(dateRaw).length >= 10) ? String(dateRaw).trim().substring(0, 10) : dateRaw;
+      const typeInput = document.querySelector('input[name="invoice-type"]:checked');
+      const type = typeInput ? typeInput.value : 'SATIS';
+
+      if (!customerName || !date) {
+        setStatus('status-invoice', 'Müşteri adı ve tarih boş bırakılamaz.', 'error');
+        return;
+      }
+
+      document.getElementById('export-options').style.display = 'none';
+
+      const partySel = document.getElementById('party-select');
+      const selectedOpt = partySel?.options[partySel.selectedIndex];
+      const customerId = type === 'SATIS' && selectedOpt?.dataset?.id ? parseInt(selectedOpt.dataset.id, 10) : null;
+      const supplierId = type === 'ALIS' && selectedOpt?.dataset?.id ? parseInt(selectedOpt.dataset.id, 10) : null;
+
+      try {
+        setStatus('status-invoice', 'Fatura oluşturuluyor...', '');
+        const res = await fetch('/invoices', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerName,
+            date,
+            type,
+            items,
+            customer_id: customerId,
+            supplier_id: supplierId
+          })
+        });
+
+        if (!res.ok) {
+          let errorMessage = 'Fatura kaydedilirken hata oluştu.';
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData.error || errorMessage;
+            console.error('Invoice error:', errorData);
+          } catch (e) {
+            console.error('Invoice error response:', res.status, res.statusText);
+          }
+          setStatus('status-invoice', errorMessage, 'error');
+          return;
+        }
+
+        const data = await res.json();
+        lastInvoiceData = {
+          ...data,
+          items: [...items],
+          customerName: customerName,
+          date: date,
+          type: type
+        };
+        setStatus(
+          'status-invoice',
+          `Fatura oluşturuldu. No: ${data.invoiceNumber} | Toplam: ${Number(data.total).toFixed(2)} ₺`,
+          'success'
+        );
+
+        document.getElementById('export-options').style.display = 'block';
+
+      } catch (err) {
+        console.error(err);
+        setStatus('status-invoice', 'Sunucuya bağlanırken hata oluştu.', 'error');
+      }
+    }
+
+    function downloadExcel(data, items) {
+      if (typeof XLSX === 'undefined') {
+        setStatus('status-invoice', 'Excel kütüphanesi yüklenemedi. Lütfen sayfayı yenileyin.', 'error');
+        return;
+      }
+
+      const wb = XLSX.utils.book_new();
+      const excelData = [];
+      
+      excelData.push(['Fatura No:', data.invoiceNumber, '', '']);
+      
+      const customerName = data.customerName || document.getElementById('customer-name').value.trim();
+      excelData.push(['Müşteri:', customerName, '', '']);
+      
+      let formattedDate = data.date || document.getElementById('invoice-date').value;
+      if (formattedDate && formattedDate.includes('-')) {
+        const dateParts = formattedDate.split('-');
+        if (dateParts.length === 3) {
+          formattedDate = `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}`;
+        }
+      }
+      excelData.push(['Tarih:', formattedDate, '', '']);
+      excelData.push(['Tür:', data.type || document.querySelector('input[name="invoice-type"]:checked')?.value || 'SATIS', '', '']);
+      excelData.push(['', '', '', '']);
+      excelData.push(['Ürün', 'Miktar', 'Birim Fiyat', 'Tutar']);
+
+      items.forEach(item => {
+        const unitPrice = Number(item.unit_price);
+        const qty = Number(item.quantity);
+        const lineTotal = unitPrice * qty;
+        excelData.push([item.name, qty, unitPrice.toFixed(2), lineTotal.toFixed(2)]);
+      });
+
+      excelData.push(['', '', '', '']);
+      const subtotal = Number(data.total) / 1.20;
+      const vatAmount = subtotal * 0.20;
+      excelData.push(['Ara Toplam (KDV Hariç)', '', '', subtotal.toFixed(2)]);
+      excelData.push(['KDV (%20)', '', '', vatAmount.toFixed(2)]);
+      excelData.push(['Toplam (KDV Dahil)', '', '', Number(data.total).toFixed(2)]);
+
+      const ws = XLSX.utils.aoa_to_sheet(excelData);
+      ws['!cols'] = [{ wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Fatura');
+      XLSX.writeFile(wb, `${data.invoiceNumber}.xlsx`);
+      setStatus('status-invoice', 'Excel indirildi.', 'success');
+    }
+
+    function exportInvoice(format) {
+      if (!lastInvoiceData) {
+        setStatus('status-invoice', 'Önce fatura oluşturmalısınız.', 'error');
+        return;
+      }
+
+      if (format === 'excel') {
+        downloadExcel(lastInvoiceData, lastInvoiceData.items);
+      } else if (format === 'pdf') {
+        void downloadPDF(lastInvoiceData, lastInvoiceData.items).catch(function (err) {
+          console.error(err);
+          setStatus('status-invoice', 'PDF oluşturulamadı.', 'error');
+        });
+      }
+    }
+
+    function formatInvoiceTypePdf(t) {
+      if (t === 'SATIS') return 'SATIŞ';
+      if (t === 'ALIS') return 'ALIŞ';
+      return t || '';
+    }
+
+    async function downloadPDF(data, items) {
+      if (typeof window.jspdf === 'undefined') {
+        setStatus('status-invoice', 'PDF kütüphanesi yüklenemedi. Lütfen sayfayı yenileyin.', 'error');
+        return;
+      }
+      if (typeof window.attachNotoFontsToPdf !== 'function') {
+        setStatus('status-invoice', 'PDF font eklentisi yüklenemedi. Sayfayı yenileyin.', 'error');
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      try {
+        await window.attachNotoFontsToPdf(doc);
+      } catch (e) {
+        console.error(e);
+        setStatus('status-invoice', 'Türkçe fontlar yüklenemedi (ağ /fonts/).', 'error');
+        return;
+      }
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      const maxWidth = pageWidth - (margin * 2);
+      let yPos = margin;
+
+      doc.setFontSize(22);
+      doc.setFont('NotoSans', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text('FATURA', margin, yPos);
+      yPos += 15;
+
+      doc.setFontSize(10);
+      doc.setFont('NotoSans', 'normal');
+      const customerName = data.customerName || '';
+      const invoiceDate = data.date || '';
+      const invoiceType = formatInvoiceTypePdf(data.type || 'SATIS');
+      let formattedDate = invoiceDate;
+      if (invoiceDate && invoiceDate.includes('-')) {
+        const dateParts = invoiceDate.split('-');
+        if (dateParts.length === 3) {
+          formattedDate = `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}`;
+        }
+      }
+
+      doc.setFont('NotoSans', 'bold');
+      doc.text('Fatura No:', margin, yPos);
+      doc.setFont('NotoSans', 'normal');
+      doc.text(String(data.invoiceNumber || ''), margin + 30, yPos);
+      yPos += 8;
+
+      doc.setFont('NotoSans', 'bold');
+      doc.text('Müşteri:', margin, yPos);
+      doc.setFont('NotoSans', 'normal');
+      doc.text(customerName || '-', margin + 30, yPos);
+      yPos += 8;
+
+      doc.setFont('NotoSans', 'bold');
+      doc.text('Tarih:', margin, yPos);
+      doc.setFont('NotoSans', 'normal');
+      doc.text(formattedDate || '-', margin + 30, yPos);
+      yPos += 8;
+
+      doc.setFont('NotoSans', 'bold');
+      doc.text('Tür:', margin, yPos);
+      doc.setFont('NotoSans', 'normal');
+      doc.text(invoiceType, margin + 30, yPos);
+      yPos += 15;
+
+      doc.setDrawColor(200, 200, 200);
+      doc.setFillColor(245, 245, 245);
+      doc.rect(margin, yPos - 7, maxWidth, 10, 'FD');
+      doc.setFont('NotoSans', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Ürün', margin + 3, yPos);
+      doc.text('Miktar', margin + 95, yPos);
+      doc.text('Birim Fiyat', margin + 125, yPos);
+      doc.text('Tutar', pageWidth - margin - 3, yPos, { align: 'right' });
+      yPos += 12;
+
+      doc.setFont('NotoSans', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(0, 0, 0);
+
+      items.forEach((item, index) => {
+        if (yPos > 260) {
+          doc.addPage();
+          yPos = margin + 15;
+          doc.setDrawColor(200, 200, 200);
+          doc.setFillColor(245, 245, 245);
+          doc.rect(margin, yPos - 7, maxWidth, 10, 'FD');
+          doc.setFont('NotoSans', 'bold');
+          doc.setFontSize(10);
+          doc.text('Ürün', margin + 3, yPos);
+          doc.text('Miktar', margin + 95, yPos);
+          doc.text('Birim Fiyat', margin + 125, yPos);
+          doc.text('Tutar', pageWidth - margin - 3, yPos, { align: 'right' });
+          yPos += 12;
+          doc.setFont('NotoSans', 'normal');
+          doc.setFontSize(9);
+        }
+
+        const unitPrice = Number(item.unit_price);
+        const qty = Number(item.quantity);
+        const lineTotal = unitPrice * qty;
+
+        const productNameText = item.name || '-';
+        const productName = doc.splitTextToSize(productNameText, 85);
+        const lineH = 5;
+        const nameHeight = Math.max(productName.length * lineH, lineH);
+
+        doc.setFont('NotoSans', 'normal');
+        doc.text(productName, margin + 3, yPos);
+        doc.text(qty.toString(), margin + 95, yPos);
+        doc.text(unitPrice.toFixed(2) + ' TL', margin + 125, yPos);
+        doc.text(lineTotal.toFixed(2) + ' TL', pageWidth - margin - 3, yPos, { align: 'right' });
+        if (index < items.length - 1) {
+          doc.setDrawColor(230, 230, 230);
+          doc.line(margin, yPos + 3, margin + maxWidth, yPos + 3);
+        }
+
+        yPos += nameHeight + 3;
+      });
+
+      yPos += 10;
+
+      const subtotal = Number(data.total) / 1.20;
+      const vatAmount = subtotal * 0.20;
+
+      doc.setFont('NotoSans', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      const valueX = pageWidth - margin;
+      const labelX = valueX - 85;
+      doc.text('Ara Toplam (KDV Hariç):', labelX, yPos);
+      doc.text(subtotal.toFixed(2) + ' TL', valueX, yPos, { align: 'right' });
+      yPos += 10;
+
+      doc.text('KDV (%20):', labelX, yPos);
+      doc.text(vatAmount.toFixed(2) + ' TL', valueX, yPos, { align: 'right' });
+      yPos += 12;
+
+      doc.setDrawColor(180, 180, 180);
+      doc.setFillColor(250, 250, 250);
+      doc.rect(margin, yPos, maxWidth, 12, 'FD');
+
+      doc.setFont('NotoSans', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text('TOPLAM (KDV Dahil):', labelX, yPos + 8);
+      doc.text(Number(data.total).toFixed(2) + ' TL', valueX, yPos + 8, { align: 'right' });
+
+      const pageCount = doc.internal.pages.length - 1;
+      doc.setFont('NotoSans', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.text(
+          `Sayfa ${i} / ${pageCount}`,
+          pageWidth - margin,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'right' }
+        );
+      }
+
+      doc.save(`${data.invoiceNumber}.pdf`);
+      setStatus('status-invoice', 'PDF indirildi.', 'success');
+    }
+
+    document.getElementById('type-pills').addEventListener('change', e => {
+      if (e.target.name === 'invoice-type') {
+        document.querySelectorAll('#type-pills .pill').forEach(p => p.classList.remove('active'));
+        e.target.closest('.pill').classList.add('active');
+        var partySel = document.getElementById('party-select');
+        var custName = document.getElementById('customer-name');
+        if (partySel) { partySel.value = ''; partySel.selectedIndex = 0; }
+        if (custName) custName.value = '';
+        updatePartySelect();
+      }
+    });
+    document.getElementById('party-select').addEventListener('change', function() {
+      if (this.value) document.getElementById('customer-name').value = this.value;
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const invoiceDateEl = document.getElementById('invoice-date');
+      if (invoiceDateEl) {
+        invoiceDateEl.value = `${yyyy}-${mm}-${dd}`;
+      }
+      updatePartySelect();
+
+      const loginPasswordEl = document.getElementById('login-password');
+      if (loginPasswordEl) {
+        loginPasswordEl.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            handleLogin();
+          }
+        });
+      }
+
+      const regFullName = document.getElementById('reg-fullName');
+      const regUsername = document.getElementById('reg-username');
+      if (regFullName && regUsername) {
+        regFullName.addEventListener('blur', function() {
+          const parts = this.value.trim().split(/\s+/).filter(Boolean);
+          if (parts.length >= 2 && !regUsername.value) {
+            regUsername.value = (parts[0] + '.' + parts[parts.length - 1]).toLowerCase();
+          }
+        });
+      }
+
+      const barcodeInput = document.getElementById('barcode-input');
+      if (barcodeInput) {
+        barcodeInput.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddProduct();
+          }
+        });
+      }
+
+      const modalName = document.getElementById('modal-name');
+      if (modalName) {
+        modalName.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const modalPrice = document.getElementById('modal-price');
+            if (modalPrice) modalPrice.focus();
+          }
+        });
+      }
+      
+      const modalPrice = document.getElementById('modal-price');
+      if (modalPrice) {
+        modalPrice.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const modalExpiry = document.getElementById('modal-expiry');
+            if (modalExpiry) modalExpiry.focus();
+          }
+        });
+      }
+      
+      const modalExpiry = document.getElementById('modal-expiry');
+      if (modalExpiry) {
+        modalExpiry.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            saveNewProduct();
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

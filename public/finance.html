@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Finans — Gelir, Gider ve Faturalar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles/light.css" />
+  <script src="/js/api-base.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="/js/jspdf-noto.js"></script>
+  <script src="/js/invoice-downloads.js"></script>
+  <style>
+    :root { --bg:#ede9e2; --card:#ffffff; --card-elevated:#ffffff; --card-soft:#f5f3ef; --border:rgba(110,100,85,0.2); --border-subtle:rgba(110,100,85,0.13); --accent:#4f46e5; --text:#1c1a2e; --text-heading:#0e0c1a; --text-secondary:#3d3a54; --muted:#6b677e; --danger:#c0392b; --success:#166f4e; }
+    body { margin:0; font-family:Inter,sans-serif; padding:20px 16px 32px; min-height:100vh; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { font-size: clamp(22px, 2.5vw, 28px); margin: 0 0 8px; }
+    .subtitle { color: var(--muted); font-size: 14px; line-height: 1.45; margin-bottom: 20px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .tab { padding: 10px 20px; border-radius: 8px 8px 0 0; border: 1px solid transparent; cursor: pointer; background: transparent; font-size: 14px; color: var(--muted); }
+    .tab.active { background: var(--card); border-color: var(--border); border-bottom-color: var(--card); color: var(--text); font-weight: 600; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card { padding: 18px 20px; margin-bottom: 16px; border-radius: 12px; }
+    .card h3 { margin-top: 0; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px; }
+    th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: 12px; font-weight: 600; }
+    tbody tr:hover td { background: rgba(79, 70, 229, 0.04); }
+    .input { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); margin-right: 8px; }
+    .btn { padding: 8px 16px; border-radius: 8px; border: none; background: var(--accent); color: #fff; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .btn:hover { filter: brightness(1.05); }
+    .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 8px; margin-right: 4px; }
+    .btn-outline { background: #fff; color: var(--accent); border: 1px solid rgba(79, 70, 229, 0.45); }
+    .btn-outline:hover { background: rgba(79, 70, 229, 0.08); }
+    .admin-only { display: none; }
+    .pdf-actions { white-space: nowrap; }
+    .total-row { font-weight: 600; background: rgba(79, 70, 229, 0.08); }
+    .summary-line { margin-bottom: 12px; font-size: 14px; color: var(--text-secondary); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/">&larr; Ana Sayfa</a>
+    <h1>Finans</h1>
+    <p class="subtitle">Gelir ve gider özeti, satış/alış fatura listeleri. <strong>Fatura</strong> PDF’de ücret ve KDV yer alır; <strong>sevk irsaliyesi</strong> PDF’de yalnızca ürün, barkod ve miktar bulunur (fiyat yok).</p>
+
+    <div class="tabs">
+      <button type="button" class="tab active" data-tab="gelir" onclick="showTab('gelir')">Gelir</button>
+      <button type="button" class="tab" data-tab="gider" onclick="showTab('gider')">Gider</button>
+    </div>
+
+    <div id="panel-gelir" class="panel active">
+      <div class="card">
+        <h3>Satış faturaları</h3>
+        <div style="margin-bottom:12px;">
+          <input type="date" id="g-start" class="input" />
+          <input type="date" id="g-end" class="input" />
+          <button type="button" class="btn" onclick="loadGelirFaturalar()">Yükle</button>
+        </div>
+        <div id="gelir-faturalar"></div>
+      </div>
+      <div class="card admin-only" id="card-manuel-gelir">
+        <h3>Manuel gelir kayıtları</h3>
+        <div id="manuel-gelir-list"></div>
+        <hr style="border:0;border-top:1px solid var(--border);margin:16px 0;" />
+        <h4 style="margin:0 0 10px;font-size:14px;">Yeni manuel gelir</h4>
+        <input type="number" id="mg-amount" class="input" placeholder="Tutar" step="0.01" min="0" />
+        <input type="text" id="mg-desc" class="input" placeholder="Açıklama" style="min-width:200px;" />
+        <input type="date" id="mg-date" class="input" />
+        <button type="button" class="btn" onclick="addManuel('GELIR')">Kaydet</button>
+        <div id="mg-status" style="margin-top:8px;font-size:13px;"></div>
+      </div>
+    </div>
+
+    <div id="panel-gider" class="panel">
+      <div class="card">
+        <h3>Alış (gider) faturaları</h3>
+        <div style="margin-bottom:12px;">
+          <input type="date" id="gd-start" class="input" />
+          <input type="date" id="gd-end" class="input" />
+          <button type="button" class="btn" onclick="loadGiderFaturalar()">Yükle</button>
+        </div>
+        <div id="gider-faturalar"></div>
+      </div>
+      <div class="card admin-only" id="card-manuel-gider">
+        <h3>Manuel gider kayıtları</h3>
+        <div id="manuel-gider-list"></div>
+        <hr style="border:0;border-top:1px solid var(--border);margin:16px 0;" />
+        <h4 style="margin:0 0 10px;font-size:14px;">Yeni manuel gider</h4>
+        <input type="number" id="mgd-amount" class="input" placeholder="Tutar" step="0.01" min="0" />
+        <input type="text" id="mgd-desc" class="input" placeholder="Açıklama" />
+        <input type="date" id="mgd-date" class="input" />
+        <button type="button" class="btn" onclick="addManuel('GIDER')">Kaydet</button>
+        <div id="mgd-status" style="margin-top:8px;font-size:13px;"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function(){
+      if (!sessionStorage.getItem('token')) { window.location.href = '/'; return; }
+      var u = {};
+      try { u = JSON.parse(sessionStorage.getItem('loggedInUser')||'{}'); } catch(e) {}
+      if (!['admin','kasa','tedarik','depo'].includes(u.role)) { window.location.href = '/'; return; }
+      window._role = u.role;
+      if (u.role === 'admin') {
+        document.querySelectorAll('.admin-only').forEach(function(el){ el.style.display = 'block'; });
+      }
+    })();
+    function authHeaders() { var t = sessionStorage.getItem('token'); return t ? { 'Authorization': 'Bearer ' + t } : {}; }
+    function fmt(n) { return Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function fmtDateCell(d) {
+      if (!d) return '—';
+      var s = String(d).split('T')[0];
+      var parts = s.split('-');
+      if (parts.length === 3) return parts[2] + '.' + parts[1] + '.' + parts[0];
+      return s;
+    }
+
+    function canDownloadFaturaSatis() {
+      var r = window._role;
+      return r === 'admin' || r === 'kasa' || r === 'depo';
+    }
+    function canDownloadFaturaAlis() {
+      var r = window._role;
+      return r === 'admin' || r === 'tedarik' || r === 'depo';
+    }
+    function canDownloadWaybill() {
+      var r = window._role;
+      return r === 'admin' || r === 'depo';
+    }
+
+    function downloadInvoicePdf(id) {
+      if (typeof window.downloadInvoicePdfFromApi !== 'function') {
+        alert('PDF modülü yüklenemedi.');
+        return;
+      }
+      void window.downloadInvoicePdfFromApi(id, authHeaders).catch(function (e) {
+        alert(e.message || 'Fatura PDF oluşturulamadı.');
+      });
+    }
+    function downloadWaybillPdf(id) {
+      if (typeof window.downloadWaybillPdfFromApi !== 'function') {
+        alert('PDF modülü yüklenemedi.');
+        return;
+      }
+      void window.downloadWaybillPdfFromApi(id, authHeaders).catch(function (e) {
+        alert(e.message || 'İrsaliye PDF oluşturulamadı.');
+      });
+    }
+
+    function showTab(name) {
+      document.querySelectorAll('.tab').forEach(function(t) {
+        t.classList.toggle('active', t.getAttribute('data-tab') === name);
+      });
+      document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+      document.getElementById('panel-' + name).classList.add('active');
+    }
+
+    function initDates() {
+      var now = new Date();
+      var today = now.toISOString().split('T')[0];
+      var monthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+      ['g-start','g-end','gd-start','gd-end','mg-date','mgd-date'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (id.indexOf('end') >= 0 || id === 'mg-date' || id === 'mgd-date') el.value = today;
+        else el.value = monthAgo;
+      });
+    }
+
+    async function loadGelirFaturalar() {
+      var el = document.getElementById('gelir-faturalar');
+      var start = document.getElementById('g-start').value;
+      var end = document.getElementById('g-end').value;
+      if (window._role === 'tedarik') {
+        el.innerHTML = '<p style="color:var(--muted);">Satış faturalarını yalnızca yönetici, kasa ve depo görür.</p>';
+        return;
+      }
+      try {
+        var res = await fetch('/api/invoices?type=SATIS&limit=100&startDate=' + encodeURIComponent(start) + '&endDate=' + encodeURIComponent(end), { headers: authHeaders() });
+        var data = await res.json();
+        var inv = data.invoices || [];
+        var toplam = inv.reduce(function(s, i) { return s + Number(i.total_amount||0); }, 0);
+        var showFatura = canDownloadFaturaSatis();
+        var showIrs = canDownloadWaybill();
+        if (inv.length === 0) {
+          el.innerHTML = '<p style="color:var(--muted);">Seçilen dönemde satış faturası yok.</p>';
+          return;
+        }
+        el.innerHTML =
+          '<p class="summary-line"><strong>Toplam satış:</strong> ' + fmt(toplam) + ' ₺ (' + inv.length + ' fatura)</p>' +
+          '<table><thead><tr><th>Tarih</th><th>No</th><th>Müşteri</th><th>Tutar</th><th>Çıktı</th></tr></thead><tbody>' +
+          inv.map(function(i) {
+            var pdfCells = '';
+            if (showFatura || showIrs) {
+              pdfCells = '<td class="pdf-actions">' +
+                (showFatura ? '<button type="button" class="btn btn-sm" onclick="downloadInvoicePdf(' + i.id + ')">Fatura</button>' : '') +
+                (showIrs ? '<button type="button" class="btn btn-sm btn-outline" onclick="downloadWaybillPdf(' + i.id + ')">İrsaliye</button>' : '') +
+                '</td>';
+            } else {
+              pdfCells = '<td>—</td>';
+            }
+            return '<tr><td>' + escapeHtml(fmtDateCell(i.date)) + '</td><td>' + escapeHtml(i.invoice_number) + '</td><td>' + escapeHtml(i.customer_name) + '</td><td>' + fmt(i.total_amount) + ' ₺</td>' + pdfCells + '</tr>';
+          }).join('') +
+          '<tr class="total-row"><td colspan="3">Toplam</td><td>' + fmt(toplam) + ' ₺</td><td></td></tr></tbody></table>';
+      } catch (e) {
+        el.innerHTML = '<p style="color:var(--danger);">Liste yüklenemedi.</p>';
+      }
+    }
+
+    async function loadGiderFaturalar() {
+      var el = document.getElementById('gider-faturalar');
+      var start = document.getElementById('gd-start').value;
+      var end = document.getElementById('gd-end').value;
+      if (window._role === 'kasa') {
+        el.innerHTML = '<p style="color:var(--muted);">Alış faturalarını yalnızca yönetici, tedarik ve depo görür.</p>';
+        return;
+      }
+      try {
+        var res = await fetch('/api/invoices?type=ALIS&limit=100&startDate=' + encodeURIComponent(start) + '&endDate=' + encodeURIComponent(end), { headers: authHeaders() });
+        var data = await res.json();
+        var inv = data.invoices || [];
+        var toplam = inv.reduce(function(s, i) { return s + Number(i.total_amount||0); }, 0);
+        var showFatura = canDownloadFaturaAlis();
+        var showIrs = canDownloadWaybill();
+        if (inv.length === 0) {
+          el.innerHTML = '<p style="color:var(--muted);">Seçilen dönemde alış faturası yok.</p>';
+          return;
+        }
+        el.innerHTML =
+          '<p class="summary-line"><strong>Toplam gider:</strong> ' + fmt(toplam) + ' ₺ (' + inv.length + ' fatura)</p>' +
+          '<table><thead><tr><th>Tarih</th><th>No</th><th>Tedarikçi</th><th>Tutar</th><th>Çıktı</th></tr></thead><tbody>' +
+          inv.map(function(i) {
+            var pdfCells = '';
+            if (showFatura || showIrs) {
+              pdfCells = '<td class="pdf-actions">' +
+                (showFatura ? '<button type="button" class="btn btn-sm" onclick="downloadInvoicePdf(' + i.id + ')">Fatura</button>' : '') +
+                (showIrs ? '<button type="button" class="btn btn-sm btn-outline" onclick="downloadWaybillPdf(' + i.id + ')">İrsaliye</button>' : '') +
+                '</td>';
+            } else {
+              pdfCells = '<td>—</td>';
+            }
+            return '<tr><td>' + escapeHtml(fmtDateCell(i.date)) + '</td><td>' + escapeHtml(i.invoice_number) + '</td><td>' + escapeHtml(i.customer_name) + '</td><td>' + fmt(i.total_amount) + ' ₺</td>' + pdfCells + '</tr>';
+          }).join('') +
+          '<tr class="total-row"><td colspan="3">Toplam</td><td>' + fmt(toplam) + ' ₺</td><td></td></tr></tbody></table>';
+      } catch (e) {
+        el.innerHTML = '<p style="color:var(--danger);">Liste yüklenemedi.</p>';
+      }
+    }
+
+    async function loadManuelEntries(type, containerId) {
+      var el = document.getElementById(containerId);
+      if (window._role !== 'admin') return;
+      try {
+        var res = await fetch('/api/finance/entries?type=' + type, { headers: authHeaders() });
+        var data = await res.json();
+        var rows = data.entries || [];
+        el.innerHTML = rows.length === 0 ? '<p style="color:var(--muted);">Manuel kayıt yok.</p>' :
+          '<table><thead><tr><th>Tarih</th><th>Tutar</th><th>Açıklama</th><th></th></tr></thead><tbody>' +
+          rows.map(function(r) {
+            return '<tr><td>' + escapeHtml(String(r.entry_date)) + '</td><td>' + fmt(r.amount) + ' ₺</td><td>' + escapeHtml(r.description || '—') + '</td>' +
+              '<td><button type="button" class="btn" style="padding:4px 8px;font-size:12px;" onclick="delEntry(' + r.id + ')">Sil</button></td></tr>';
+          }).join('') + '</tbody></table>';
+      } catch (e) {
+        el.innerHTML = '<p style="color:var(--muted);">Manuel kayıtlar yüklenemedi.</p>';
+      }
+    }
+
+    async function addManuel(t) {
+      var amount, desc, date, statusEl;
+      if (t === 'GELIR') {
+        amount = document.getElementById('mg-amount').value;
+        desc = document.getElementById('mg-desc').value;
+        date = document.getElementById('mg-date').value;
+        statusEl = document.getElementById('mg-status');
+      } else {
+        amount = document.getElementById('mgd-amount').value;
+        desc = document.getElementById('mgd-desc').value;
+        date = document.getElementById('mgd-date').value;
+        statusEl = document.getElementById('mgd-status');
+      }
+      try {
+        var res = await fetch('/api/finance/entries', {
+          method: 'POST',
+          headers: Object.assign({}, authHeaders(), { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ entry_type: t, amount: parseFloat(amount), description: desc, entry_date: date })
+        });
+        var d = await res.json();
+        if (res.ok) {
+          statusEl.textContent = 'Kaydedildi.';
+          statusEl.style.color = 'var(--success)';
+          loadManuelEntries('GELIR', 'manuel-gelir-list');
+          loadManuelEntries('GIDER', 'manuel-gider-list');
+        } else {
+          statusEl.textContent = d.error || 'Hata';
+          statusEl.style.color = 'var(--danger)';
+        }
+      } catch (e) {
+        statusEl.textContent = 'Bağlantı hatası';
+        statusEl.style.color = 'var(--danger)';
+      }
+    }
+
+    async function delEntry(id) {
+      if (!confirm('Silinsin mi?')) return;
+      await fetch('/api/finance/entries/' + id, { method: 'DELETE', headers: authHeaders() });
+      loadManuelEntries('GELIR', 'manuel-gelir-list');
+      loadManuelEntries('GIDER', 'manuel-gider-list');
+    }
+
+    initDates();
+    loadGelirFaturalar();
+    loadGiderFaturalar();
+    loadManuelEntries('GELIR', 'manuel-gelir-list');
+    loadManuelEntries('GIDER', 'manuel-gider-list');
+  </script>
+</body>
+</html>

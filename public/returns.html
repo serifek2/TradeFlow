@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Satış İadeleri</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles/light.css" />
+  <script src="/js/api-base.js"></script>
+  <style>
+    :root { --bg:#ede9e2; --card:#ffffff; --card-elevated:#ffffff; --card-soft:#f5f3ef; --border:rgba(110,100,85,0.2); --border-subtle:rgba(110,100,85,0.13); --accent:#4f46e5; --text:#1c1a2e; --text-heading:#0e0c1a; --text-secondary:#3d3a54; --muted:#6b677e; --success:#166f4e; --danger:#c0392b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Inter', sans-serif; min-height: 100vh; padding: 20px 16px 32px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .card { padding: 18px 20px; margin-bottom: 16px; }
+    .field-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .input, select { width: 100%; max-width: 400px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: #f8fafc; color: var(--text); margin-bottom: 12px; }
+    .btn { padding: 8px 16px; border-radius: 8px; border: none; background: var(--accent); color: white; cursor: pointer; font-size: 13px; }
+    .btn:hover { opacity: 0.9; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: 12px; }
+    input[type="number"] { width: 80px; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(51,65,85,0.4); background: rgba(15,23,42,0.4); color: var(--text); }
+    .status { font-size: 13px; margin-top: 12px; }
+    .status.error { color: var(--danger); }
+    .status.success { color: var(--success); }
+    .empty { color: var(--muted); padding: 24px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/">&larr; Ana Sayfa</a>
+    <h1>Satış İadeleri</h1>
+    <p class="subtitle">Satış faturasına ait ürünleri iade edin; stoklara otomatik eklenir.</p>
+    <div class="card">
+      <div class="field-label">Satış Faturası Seçin</div>
+      <select id="invoice-select" class="input">
+        <option value="">-- Fatura seçin --</option>
+      </select>
+      <div id="invoice-info" style="display:none; margin-bottom:16px; padding:12px; background: rgba(51,65,85,0.2); border-radius:8px;">
+        <strong id="inv-customer"></strong> · <span id="inv-date"></span> · <span id="inv-total"></span> ₺
+      </div>
+      <div id="items-section" style="display:none;">
+        <div class="field-label">İade edilecek miktarları girin (boş = 0)</div>
+        <table>
+          <thead><tr><th>Ürün</th><th>Satılan</th><th>İade Miktar</th></tr></thead>
+          <tbody id="items-body"></tbody>
+        </table>
+        <div class="field-label" style="margin-top:12px;">Açıklama (opsiyonel)</div>
+        <input type="text" id="return-reason" class="input" placeholder="Örn: Müşteri iadesi" />
+        <div style="margin-top:16px;">
+          <button class="btn" onclick="submitReturn()">İadeyi Onayla</button>
+          <button class="btn btn-ghost" onclick="clearSelection()" style="margin-left:8px;">Temizle</button>
+        </div>
+        <div id="return-status" class="status"></div>
+      </div>
+      <div id="empty-msg" class="empty">Önce bir fatura seçin.</div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      if (!sessionStorage.getItem('token')) { window.location.href = '/'; return; }
+      var u = sessionStorage.getItem('loggedInUser');
+      try { window._userRole = u ? JSON.parse(u).role : null; } catch (e) { window._userRole = null; }
+      if (window._userRole !== 'admin' && window._userRole !== 'kasa') {
+        window.location.href = '/';
+      }
+    })();
+    function authHeaders() { const t = sessionStorage.getItem('token'); return t ? { 'Authorization': 'Bearer ' + t } : {}; }
+    let invoicesList = [];
+    let currentInvoice = null;
+    let currentItems = [];
+
+    async function loadInvoices() {
+      try {
+        const res = await fetch('/api/invoices?type=SATIS&limit=80', { headers: authHeaders() });
+        const data = await res.json();
+        invoicesList = data.invoices || [];
+        const sel = document.getElementById('invoice-select');
+        sel.innerHTML = '<option value="">-- Fatura seçin --</option>' + invoicesList.map(inv =>
+          `<option value="${inv.id}">${inv.invoice_number} · ${inv.date} · ${inv.customer_name} · ${Number(inv.total_amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</option>`
+        ).join('');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    document.getElementById('invoice-select').addEventListener('change', async function() {
+      const id = this.value;
+      document.getElementById('return-status').textContent = '';
+      if (!id) {
+        document.getElementById('invoice-info').style.display = 'none';
+        document.getElementById('items-section').style.display = 'none';
+        document.getElementById('empty-msg').style.display = 'block';
+        return;
+      }
+      try {
+        const res = await fetch('/api/invoices/' + id + '/items', { headers: authHeaders() });
+        if (!res.ok) {
+          document.getElementById('return-status').textContent = (await res.json()).error || 'Fatura yüklenemedi';
+          document.getElementById('return-status').className = 'status error';
+          return;
+        }
+        const data = await res.json();
+        currentInvoice = data.invoice;
+        currentItems = data.items || [];
+        document.getElementById('invoice-info').style.display = 'block';
+        document.getElementById('inv-customer').textContent = currentInvoice.customer_name;
+        document.getElementById('inv-date').textContent = currentInvoice.date;
+        document.getElementById('inv-total').textContent = Number(currentInvoice.total_amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+        document.getElementById('items-body').innerHTML = currentItems.map((item, i) =>
+          `<tr><td>${escapeHtml(item.product_name || '')} (${escapeHtml(item.barcode || '')})</td><td>${item.quantity}</td><td><input type="number" id="ret-qty-${i}" min="0" max="${item.quantity}" value="0" /></td></tr>`
+        ).join('');
+        document.getElementById('items-section').style.display = 'block';
+        document.getElementById('empty-msg').style.display = 'none';
+      } catch (e) {
+        document.getElementById('return-status').textContent = 'Fatura kalemleri yüklenemedi.';
+        document.getElementById('return-status').className = 'status error';
+      }
+    });
+
+    function escapeHtml(s) { if (s == null || s === '') return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    function clearSelection() {
+      document.getElementById('invoice-select').value = '';
+      document.getElementById('invoice-select').dispatchEvent(new Event('change'));
+    }
+
+    async function submitReturn() {
+      if (!currentInvoice || !currentItems.length) return;
+      const statusEl = document.getElementById('return-status');
+      const items = [];
+      for (let i = 0; i < currentItems.length; i++) {
+        const input = document.getElementById('ret-qty-' + i);
+        const qty = parseInt(input && input.value ? input.value : 0, 10);
+        if (qty > 0) {
+          if (qty > currentItems[i].quantity) {
+            statusEl.textContent = 'İade miktarı satılan miktarı aşamaz.';
+            statusEl.className = 'status error';
+            return;
+          }
+          items.push({ product_id: currentItems[i].product_id, quantity: qty });
+        }
+      }
+      if (items.length === 0) {
+        statusEl.textContent = 'En az bir ürün için iade miktarı girin.';
+        statusEl.className = 'status error';
+        return;
+      }
+      const reason = document.getElementById('return-reason').value.trim();
+      try {
+        statusEl.textContent = 'İşleniyor...';
+        statusEl.className = 'status';
+        const res = await fetch('/api/sales/return', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoice_id: currentInvoice.id, items, reason: reason || null })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          statusEl.textContent = 'İade kaydedildi. Stoklar güncellendi.';
+          statusEl.className = 'status success';
+          clearSelection();
+          loadInvoices();
+        } else {
+          statusEl.textContent = data.error || 'İade işlemi başarısız';
+          statusEl.className = 'status error';
+        }
+      } catch (e) {
+        statusEl.textContent = 'Sunucuya bağlanılamadı.';
+        statusEl.className = 'status error';
+      }
+    }
+
+    loadInvoices();
+  </script>
+</body>
+</html>

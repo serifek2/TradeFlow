@@ -1,0 +1,71 @@
+CREATE TABLE IF NOT EXISTS products (
+  id SERIAL PRIMARY KEY,
+  barcode VARCHAR(100) UNIQUE NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  unit_price NUMERIC(12,2) NOT NULL DEFAULT 0,
+  stock_quantity INTEGER DEFAULT 0,
+  min_stock INTEGER DEFAULT 0,
+  expiry_date DATE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS invoices (
+  id SERIAL PRIMARY KEY,
+  invoice_number VARCHAR(100) UNIQUE NOT NULL,
+  date DATE NOT NULL,
+  customer_name VARCHAR(255) NOT NULL,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('SATIS', 'ALIS')),
+  total_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS invoice_items (
+  id SERIAL PRIMARY KEY,
+  invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  product_id INTEGER NOT NULL REFERENCES products(id),
+  quantity INTEGER NOT NULL,
+  unit_price NUMERIC(12,2) NOT NULL,
+  line_total NUMERIC(12,2) NOT NULL
+);
+
+ALTER TABLE products ADD COLUMN IF NOT EXISTS critical_stock INTEGER DEFAULT 0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS expiry_date DATE;
+
+CREATE TABLE IF NOT EXISTS suppliers (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  contact_person VARCHAR(255),
+  phone VARCHAR(50),
+  email VARCHAR(255),
+  address TEXT,
+  tax_number VARCHAR(50),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS customers (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  contact_person VARCHAR(255),
+  phone VARCHAR(50),
+  email VARCHAR(255),
+  address TEXT,
+  tax_number VARCHAR(50),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS supplier_id INTEGER REFERENCES suppliers(id);
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id);
+
+ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price NUMERIC(12,2) DEFAULT 0;
+
+ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS cost_price NUMERIC(12,2) DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS app_users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(100) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255),
+  role VARCHAR(50) DEFAULT 'kasa' CHECK (role IN ('admin', 'kasa', 'depo')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

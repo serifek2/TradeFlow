@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Stok Hareketleri</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/styles/light.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Inter', system-ui, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 28px 18px 40px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { max-width: 1200px; width: 100%; }
+    h1 { font-size: clamp(20px, 2.5vw, 24px); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 8px; }
+    .subtitle { font-size: 14px; margin-bottom: 20px; line-height: 1.45; }
+    .nav-links { margin-bottom: 6px; font-size: 14px; }
+    .nav-links a + a { margin-left: 14px; }
+    .card {
+      margin-bottom: 16px;
+      padding: 22px 24px !important;
+      overflow-x: auto;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px; }
+    th, td { padding: 10px 12px; text-align: left; }
+    tbody tr:hover td { background: rgba(55, 48, 163, 0.05); }
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+    .badge-giris {
+      background: rgba(20, 83, 45, 0.15);
+      color: #14532d;
+      border-color: rgba(20, 83, 45, 0.28);
+    }
+    .badge-cikis {
+      background: rgba(185, 28, 28, 0.12);
+      color: #b91c1c;
+      border-color: rgba(185, 28, 28, 0.28);
+    }
+    .badge-duzeltme {
+      background: rgba(55, 48, 163, 0.12);
+      color: #3730a3;
+      border-color: rgba(55, 48, 163, 0.25);
+    }
+    .empty { color: var(--muted); text-align: center; padding: 32px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="nav-links">
+      <a href="/">&larr; Ana Sayfa</a>
+      <a href="/stock.html">Stok Takibi</a>
+    </div>
+    <h1>Stok Hareketleri</h1>
+    <p class="subtitle">Tüm stok giriş, çıkış ve düzeltme işlemlerinin kaydı</p>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Tarih</th>
+            <th>Ürün</th>
+            <th>Barkod</th>
+            <th>İşlem</th>
+            <th>Miktar</th>
+            <th>Önceki</th>
+            <th>Sonraki</th>
+            <th>Açıklama</th>
+            <th>Kullanıcı</th>
+          </tr>
+        </thead>
+        <tbody id="list"></tbody>
+      </table>
+      <div id="empty" class="empty" style="display:none;">Henüz stok hareketi kaydı yok.</div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      if (!sessionStorage.getItem('token')) { window.location.href = '/'; return; }
+      var u = sessionStorage.getItem('loggedInUser');
+      try { window._userRole = u ? JSON.parse(u).role : null; } catch (e) { window._userRole = null; }
+      if (window._userRole !== 'admin' && window._userRole !== 'depo') {
+        window.location.href = '/stock.html';
+      }
+    })();
+    function authHeaders() { const t = sessionStorage.getItem('token'); return t ? { 'Authorization': 'Bearer ' + t } : {}; }
+    function escapeHtml(s) { if (s == null || s === '') return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function badgeClass(t) { return { GIRIS: 'badge-giris', CIKIS: 'badge-cikis', DUZELTME: 'badge-duzeltme' }[t] || ''; }
+    function badgeLabel(t) { return { GIRIS: 'Giriş', CIKIS: 'Çıkış', DUZELTME: 'Düzeltme' }[t] || t; }
+    async function load() {
+      const tbody = document.getElementById('list');
+      const emptyEl = document.getElementById('empty');
+      try {
+        const res = await fetch('/api/stock/movements?limit=200', { headers: authHeaders() });
+        let data;
+        try { data = await res.json(); } catch (e) { data = {}; }
+        if (!res.ok) {
+          tbody.innerHTML = '<tr><td colspan="9" class="empty">' + escapeHtml(data.error || 'Liste alınamadı') + '</td></tr>';
+          emptyEl.style.display = 'none';
+          return;
+        }
+        const movements = data.movements || [];
+        if (movements.length === 0) {
+          tbody.innerHTML = '';
+          emptyEl.style.display = 'block';
+          return;
+        }
+        emptyEl.style.display = 'none';
+        tbody.innerHTML = movements.map(m => {
+          const dt = m.created_at ? new Date(m.created_at).toLocaleString('tr-TR') : '—';
+          const badge = '<span class="badge ' + badgeClass(m.movement_type) + '">' + badgeLabel(m.movement_type) + '</span>';
+          return '<tr><td>' + dt + '</td><td>' + escapeHtml(m.product_name || '') + '</td><td>' + escapeHtml(m.barcode || '') +
+            '</td><td>' + badge + '</td><td>' + Number(m.quantity).toLocaleString('tr-TR') + '</td><td>' +
+            Number(m.previous_quantity).toLocaleString('tr-TR') + '</td><td>' + Number(m.new_quantity).toLocaleString('tr-TR') +
+            '</td><td>' + escapeHtml(m.reason || '—') + '</td><td>' + escapeHtml(m.username || '—') + '</td></tr>';
+        }).join('');
+      } catch (e) {
+        console.error(e);
+        tbody.innerHTML = '<tr><td colspan="9" class="empty">Liste yüklenemedi.</td></tr>';
+        emptyEl.style.display = 'none';
+      }
+    }
+    load();
+  </script>
+</body>
+</html>

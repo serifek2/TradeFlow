@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard - Satış Analitikleri</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles/light.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #ede9e2;
+      --card: #ffffff;
+      --card-elevated: #ffffff;
+      --card-soft: #f5f3ef;
+      --border: rgba(110, 100, 85, 0.2);
+      --border-subtle: rgba(110, 100, 85, 0.13);
+      --accent: #4f46e5;
+      --text: #1c1a2e;
+      --text-heading: #0e0c1a;
+      --text-secondary: #3d3a54;
+      --muted: #6b677e;
+      --success: #166f4e;
+      --danger: #c0392b;
+      --stock-kritik-bg: rgba(249, 115, 22, 0.14);
+      --stock-kritik-bg-hover: rgba(249, 115, 22, 0.24);
+      --stock-kritik-text: #9a3412;
+      --stock-uyari-bg: rgba(185, 125, 0, 0.12);
+      --stock-uyari-bg-hover: rgba(175, 115, 0, 0.2);
+      --stock-uyari-text: #5a3800;
+      --stock-kritik-badge: #ea580c;
+      --stock-uyari-badge: #a87000;
+      --stock-expired-bg: rgba(157, 23, 77, 0.11);
+      --stock-expired-bg-hover: rgba(157, 23, 77, 0.19);
+      --stock-expired-text: #831843;
+      --stock-expired-badge: #be123c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-gradient);
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
+    .page-header { margin-bottom: 28px; }
+    .page-header h1 {
+      font-size: 26px;
+      margin: 0 0 4px;
+      font-weight: 800;
+      background: linear-gradient(115deg, #7c3aed 0%, #a855f7 40%, #0ea5e9 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 0; }
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .nav-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(139,92,246,0.18);
+      color: var(--text) !important;
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none !important;
+      transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+      box-shadow: 0 1px 4px rgba(124,58,237,0.08);
+    }
+    .nav-links a:hover {
+      background: rgba(255,255,255,0.95) !important;
+      border-color: rgba(124,58,237,0.38) !important;
+      box-shadow: 0 3px 12px rgba(124,58,237,0.18) !important;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    /* Özet metrik kartları — class="card" kullanma: light.css .card !important beyaz zemin verir,
+       beyaz metinle birleşince değerler görünmez. */
+    .dashboard-stat {
+      border-radius: 18px;
+      padding: 22px 20px 18px;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+      background: rgba(255, 255, 255, 0.92);
+      border: 2px solid rgba(139, 92, 246, 0.22);
+      box-shadow: 0 2px 10px rgba(15, 10, 32, 0.06);
+      transition:
+        transform 0.28s ease,
+        box-shadow 0.28s ease,
+        background 0.28s ease,
+        border-color 0.28s ease;
+    }
+    .dashboard-stat:hover {
+      transform: translateY(-4px);
+    }
+    .dashboard-stat::after {
+      content: '';
+      position: absolute;
+      bottom: -18px; right: -18px;
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0;
+      transition: opacity 0.28s ease;
+    }
+    .dashboard-stat:hover::after {
+      opacity: 1;
+    }
+    .dashboard-stat .card-title,
+    .dashboard-stat .card-value {
+      position: relative;
+      z-index: 1;
+      transition: color 0.28s ease;
+    }
+    /* Varsayılan: çerçeve rengi; hover: dolgu + beyaz metin */
+    .stat-blue {
+      border-color: rgba(14, 165, 233, 0.5);
+    }
+    .stat-blue:hover {
+      background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+      border-color: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 8px 28px rgba(14, 165, 233, 0.32);
+    }
+    .stat-purple {
+      border-color: rgba(124, 58, 237, 0.45);
+    }
+    .stat-purple:hover {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      border-color: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 8px 28px rgba(124, 58, 237, 0.32);
+    }
+    .stat-green {
+      border-color: rgba(5, 150, 105, 0.5);
+    }
+    .stat-green:hover {
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      border-color: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 8px 28px rgba(5, 150, 105, 0.3);
+    }
+    .stat-orange {
+      border-color: rgba(245, 158, 11, 0.55);
+    }
+    .stat-orange:hover {
+      background: linear-gradient(135deg, #f59e0b 0%, #fb923c 100%);
+      border-color: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 8px 28px rgba(245, 158, 11, 0.3);
+    }
+    .stat-rose {
+      border-color: rgba(244, 63, 94, 0.5);
+    }
+    .stat-rose:hover {
+      background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%);
+      border-color: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 8px 28px rgba(244, 63, 94, 0.28);
+    }
+    .stat-amber {
+      border-color: rgba(217, 119, 6, 0.55);
+    }
+    .stat-amber:hover {
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+      border-color: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 8px 28px rgba(217, 119, 6, 0.28);
+    }
+    .stat-red {
+      border-color: rgba(220, 38, 38, 0.5);
+    }
+    .stat-red:hover {
+      background: linear-gradient(135deg, #dc2626 0%, #f87171 100%);
+      border-color: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 8px 28px rgba(220, 38, 38, 0.28);
+    }
+    .dashboard-stat .card-title {
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;
+      color: var(--text-secondary) !important;
+    }
+    .dashboard-stat:hover .card-title {
+      color: rgba(255, 255, 255, 0.88) !important;
+    }
+    .dashboard-stat .card-value {
+      font-size: 26px; font-weight: 800; letter-spacing: -0.02em;
+      color: var(--text-heading) !important;
+    }
+    .dashboard-stat:hover .card-value {
+      color: #fff !important;
+    }
+    .dashboard-stat .card-value.positive,
+    .dashboard-stat .card-value.negative {
+      color: var(--text-heading) !important;
+    }
+    .dashboard-stat:hover .card-value.positive,
+    .dashboard-stat:hover .card-value.negative {
+      color: #fff !important;
+    }
+    .chart-container { position: relative; height: 280px; margin-bottom: 24px; }
+    .chart-card {
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(16px);
+      border-radius: 20px;
+      padding: 22px;
+      border: 1px solid rgba(255,255,255,0.9);
+      margin-bottom: 24px;
+      box-shadow: 0 4px 16px rgba(124,58,237,0.08), 0 16px 40px rgba(15,10,32,0.07);
+    }
+    .chart-card h3 {
+      font-size: 16px;
+      margin: 0 0 16px;
+      font-weight: 700;
+      color: var(--text-heading);
+    }
+    .filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .filters input, .filters select {
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(139,92,246,0.2);
+      background: rgba(245,243,255,0.8);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .filters input:focus, .filters select:focus {
+      border-color: rgba(124,58,237,0.5);
+      box-shadow: 0 0 0 3px rgba(124,58,237,0.1);
+    }
+    .btn {
+      padding: 8px 18px;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 50%, #4f46e5 100%);
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 3px 12px rgba(124,58,237,0.36);
+      transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+    }
+    .btn:hover { transform: translateY(-1px); filter: brightness(1.06); box-shadow: 0 6px 20px rgba(124,58,237,0.46); }
+    .btn:active { transform: translateY(0); filter: brightness(0.96); }
+    .stock-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .stock-table th { background: rgba(55, 48, 163, 0.14); color: var(--text-secondary); font-weight: 600; padding: 10px 12px; text-align: left; }
+    .stock-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .stock-table tr:hover { background: rgba(15, 23, 42, 0.06); }
+    .stock-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 12px; }
+    .stock-badge.critical { background: var(--stock-kritik-badge, #ea580c); color: #fffbeb; }
+    .stock-badge.warning { background: var(--stock-uyari-badge, #b45309); color: #fff; }
+    .stock-table tr.row-critical { background: var(--stock-kritik-bg); }
+    .stock-table tr.row-critical:hover { background: var(--stock-kritik-bg-hover); }
+    .stock-table tr.row-critical td { color: var(--stock-kritik-text); }
+    .stock-table tr.row-warning { background: var(--stock-uyari-bg); }
+    .stock-table tr.row-warning:hover { background: var(--stock-uyari-bg-hover); }
+    .stock-table tr.row-warning td { color: var(--stock-uyari-text); }
+    .stock-empty { color: var(--muted); padding: 16px; text-align: center; }
+    .skt-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .skt-table th { background: rgba(55, 48, 163, 0.16); color: var(--text-secondary); font-weight: 600; padding: 10px 12px; text-align: left; }
+    .skt-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .skt-table tbody tr { background: rgba(15, 23, 42, 0.04); }
+    .skt-table tbody tr:hover { background: rgba(15, 23, 42, 0.08); }
+    .skt-table tbody tr.skt-critical { background: var(--stock-kritik-bg); }
+    .skt-table tbody tr.skt-critical:hover { background: var(--stock-kritik-bg-hover); }
+    .skt-table tbody tr.skt-critical td { color: var(--stock-kritik-text); }
+    .skt-table tbody tr.skt-warning { background: var(--stock-uyari-bg); }
+    .skt-table tbody tr.skt-warning:hover { background: var(--stock-uyari-bg-hover); }
+    .skt-table tbody tr.skt-warning td { color: var(--stock-uyari-text); }
+    .skt-table .skt-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 12px; }
+    .skt-table .skt-badge.expired { background: var(--stock-expired-badge, #be123c); color: #fff; border: 1px solid rgba(190, 24, 92, 0.45); }
+    .skt-table .skt-badge.critical { background: var(--stock-kritik-badge); color: #fffbeb; }
+    .skt-table .skt-badge.warning { background: var(--stock-uyari-badge); color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-links">
+      <a href="/">← Ana Sayfa</a>
+      <a href="/stock.html">Stok Takibi</a>
+      <a href="/production.html">Üretim</a>
+      <a href="/returns.html">İadeler</a>
+      <a href="/stock-movements.html">Stok Hareketleri</a>
+    </nav>
+    <div class="page-header">
+      <h1>Analitik Dashboard</h1>
+      <p class="subtitle">Günlük ve aylık satış analitikleri, muhasebe raporları</p>
+    </div>
+
+    <div class="grid" id="summary-cards">
+      <div class="dashboard-stat stat-blue" id="card-gunluk-satis">
+        <div class="card-title">Bugünkü Satış</div>
+        <div class="card-value" id="gunluk-satis">0 ₺</div>
+      </div>
+      <div class="dashboard-stat stat-purple" id="card-aylik-satis">
+        <div class="card-title">Bu Ay Satış</div>
+        <div class="card-value" id="aylik-satis">0 ₺</div>
+      </div>
+      <div class="dashboard-stat stat-green" id="card-aylik-degisim">
+        <div class="card-title">Aylık Değişim</div>
+        <div class="card-value" id="aylik-degisim">-%</div>
+      </div>
+      <div class="dashboard-stat stat-orange" id="card-gunluk-gider" style="display:none;">
+        <div class="card-title">Bugünkü Gider</div>
+        <div class="card-value" id="gunluk-gider">0 ₺</div>
+      </div>
+      <div class="dashboard-stat stat-rose" id="card-aylik-gider" style="display:none;">
+        <div class="card-title">Bu Ay Gider</div>
+        <div class="card-value" id="aylik-gider">0 ₺</div>
+      </div>
+      <div class="dashboard-stat stat-amber">
+        <div class="card-title">Stok Uyarısı</div>
+        <div class="card-value" id="stok-uyari">0</div>
+      </div>
+      <div class="dashboard-stat stat-red">
+        <div class="card-title">SKT Uyarısı</div>
+        <div class="card-value" id="skt-uyari">0</div>
+      </div>
+    </div>
+
+    <div class="chart-card" id="card-daily">
+      <h3 id="daily-chart-title">Günlük Satışlar</h3>
+      <div class="filters">
+        <input type="date" id="daily-start" />
+        <input type="date" id="daily-end" />
+        <button class="btn" onclick="loadDailyChart()">Yükle</button>
+      </div>
+      <div class="chart-container"><canvas id="daily-chart"></canvas></div>
+    </div>
+
+    <div class="chart-card" id="card-monthly">
+      <h3 id="monthly-chart-title">Aylık Satışlar</h3>
+      <div class="filters">
+        <select id="monthly-year"></select>
+        <button class="btn" onclick="loadMonthlyChart()">Yükle</button>
+      </div>
+      <div class="chart-container"><canvas id="monthly-chart"></canvas></div>
+    </div>
+
+    <div class="chart-card" id="card-profit">
+      <h3>Kâr/Zarar Raporu</h3>
+      <div class="filters">
+        <input type="date" id="report-start" />
+        <input type="date" id="report-end" />
+        <button class="btn" onclick="loadProfitLoss()">Yükle</button>
+      </div>
+      <div id="profit-loss-result"></div>
+    </div>
+
+    <div class="chart-card" id="card-top-products">
+      <h3>En Çok Satan Ürünler</h3>
+      <div class="filters">
+        <input type="date" id="top-products-start" />
+        <input type="date" id="top-products-end" />
+        <button class="btn" onclick="loadTopProducts()">Yükle</button>
+      </div>
+      <div id="top-products-list"></div>
+    </div>
+
+    <div class="chart-card">
+      <h3>Kritik ve Uyarı Seviyesi Stok Ürünleri</h3>
+      <div id="critical-stock-list"></div>
+    </div>
+
+    <div class="chart-card">
+      <h3>Son Tüketim Tarihi (SKT) Uyarısı</h3>
+      <div id="skt-list"></div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const token = sessionStorage.getItem('token');
+      const user = sessionStorage.getItem('loggedInUser');
+      if (!token || !user) { window.location.href = '/'; return; }
+      try { window._userRole = JSON.parse(user).role; } catch (e) { window._userRole = 'admin'; }
+    })();
+    function authHeaders() { const t = sessionStorage.getItem('token'); return t ? { 'Authorization': 'Bearer ' + t } : {}; }
+    const fmt = (n) => Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    let dailyChart, monthlyChart;
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch('/api/analytics/dashboard', { headers: authHeaders() });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const d = await res.json();
+        var role = window._userRole;
+        var isTedarik = role === 'tedarik';
+        if (!isTedarik) {
+          document.getElementById('gunluk-satis').textContent = fmt(d.gunlukSatis) + ' ₺';
+          document.getElementById('aylik-satis').textContent = fmt(d.aylikSatis) + ' ₺';
+          var degEl = document.getElementById('aylik-degisim');
+          degEl.textContent = (d.aylikDegisimYuzde >= 0 ? '+' : '') + d.aylikDegisimYuzde + '%';
+          degEl.className = 'card-value ' + (d.aylikDegisimYuzde >= 0 ? 'positive' : 'negative');
+          ['card-gunluk-satis', 'card-aylik-satis', 'card-aylik-degisim'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = '';
+          });
+        } else {
+          ['card-gunluk-satis', 'card-aylik-satis', 'card-aylik-degisim'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+          });
+        }
+        document.getElementById('stok-uyari').textContent = d.stokUyariSayisi;
+        document.getElementById('skt-uyari').textContent = d.sktUyariSayisi;
+        var showGider = role === 'admin' || role === 'tedarik';
+        if (showGider) {
+          document.getElementById('gunluk-gider').textContent = fmt(d.gunlukGider || 0) + ' ₺';
+          document.getElementById('aylik-gider').textContent = fmt(d.aylikGider || 0) + ' ₺';
+          var cg1 = document.getElementById('card-gunluk-gider');
+          var cg2 = document.getElementById('card-aylik-gider');
+          if (cg1) cg1.style.display = '';
+          if (cg2) cg2.style.display = '';
+        }
+      } catch (e) {
+        console.error('Dashboard yüklenemedi:', e);
+      }
+    }
+
+    async function loadDailyChart() {
+      const start = document.getElementById('daily-start').value || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+      const end = document.getElementById('daily-end').value || new Date().toISOString().split('T')[0];
+      const res = await fetch(`/api/analytics/daily?startDate=${start}&endDate=${end}`, { headers: authHeaders() });
+      const { data } = await res.json();
+      const labels = data.map(r => r.date);
+      const values = data.map(r => r.total);
+      const valuesGider = data.map(r => r.totalGider || 0);
+      const role = window._userRole;
+      const isTedarik = role === 'tedarik';
+      const isAdmin = role === 'admin';
+      var datasets = [];
+      if (isTedarik) {
+        datasets = [{ label: 'Gider (₺)', data: valuesGider, backgroundColor: 'rgba(239,68,68,0.6)' }];
+        var dt = document.getElementById('daily-chart-title');
+        if (dt) dt.textContent = 'Günlük Giderler';
+      } else {
+        datasets = [{ label: 'Satış (₺)', data: values, backgroundColor: 'rgba(79,70,229,0.6)' }];
+        if (isAdmin) datasets.push({ label: 'Gider (₺)', data: valuesGider, backgroundColor: 'rgba(239,68,68,0.6)' });
+        var dt = document.getElementById('daily-chart-title');
+        if (dt) dt.textContent = 'Günlük Satışlar';
+      }
+      if (dailyChart) dailyChart.destroy();
+      dailyChart = new Chart(document.getElementById('daily-chart'), {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: datasets.length > 1 } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(71,85,105,0.3)' }, ticks: { color: '#9ca3af' } },
+            x: { grid: { display: false }, ticks: { color: '#9ca3af' } }
+          }
+        }
+      });
+    }
+
+    async function loadMonthlyChart() {
+      const year = document.getElementById('monthly-year').value || new Date().getFullYear();
+      const res = await fetch(`/api/analytics/monthly?year=${year}`, { headers: authHeaders() });
+      const { data } = await res.json();
+      const labels = data.map(r => r.month);
+      const values = data.map(r => r.total);
+      const valuesGider = data.map(r => r.totalGider || 0);
+      const role = window._userRole;
+      const isTedarik = role === 'tedarik';
+      const isAdmin = role === 'admin';
+      var datasets = [];
+      if (isTedarik) {
+        datasets = [{ label: 'Gider (₺)', data: valuesGider, borderColor: '#ef4444', fill: true, backgroundColor: 'rgba(239,68,68,0.1)' }];
+        var mt = document.getElementById('monthly-chart-title');
+        if (mt) mt.textContent = 'Aylık Giderler';
+      } else {
+        datasets = [{ label: 'Satış (₺)', data: values, borderColor: '#4f46e5', fill: true, backgroundColor: 'rgba(79,70,229,0.1)' }];
+        if (isAdmin) datasets.push({ label: 'Gider (₺)', data: valuesGider, borderColor: '#ef4444', fill: true, backgroundColor: 'rgba(239,68,68,0.1)' });
+        var mt = document.getElementById('monthly-chart-title');
+        if (mt) mt.textContent = 'Aylık Satışlar';
+      }
+      if (monthlyChart) monthlyChart.destroy();
+      monthlyChart = new Chart(document.getElementById('monthly-chart'), {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: datasets.length > 1 } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(71,85,105,0.3)' }, ticks: { color: '#9ca3af' } },
+            x: { grid: { display: false }, ticks: { color: '#9ca3af' } }
+          }
+        }
+      });
+    }
+
+    async function loadCriticalStock() {
+      const el = document.getElementById('critical-stock-list');
+      if (!el) return;
+      try {
+        const res = await fetch('/api/products/critical-stock', { headers: authHeaders() });
+        const data = await res.json();
+        const critical = data.critical || [];
+        const warning = data.warning || [];
+        if (critical.length === 0 && warning.length === 0) {
+          el.innerHTML = '<p class="stock-empty">Kritik veya uyarı seviyesinde ürün yok.</p>';
+          return;
+        }
+        const row = (p, type) => {
+          const isCritical = type === 'critical';
+          const rowClass = isCritical ? 'row-critical' : 'row-warning';
+          const badgeClass = isCritical ? 'critical' : 'warning';
+          const label = isCritical ? 'Kritik' : 'Uyarı seviyesi';
+          return `<tr class="${rowClass}">
+            <td>${escapeHtml(p.name || '-')}</td>
+            <td>${escapeHtml(p.barcode || '-')}</td>
+            <td>${Number(p.stock_quantity)}</td>
+            <td><span class="stock-badge ${badgeClass}">${label}</span></td>
+          </tr>`;
+        };
+        el.innerHTML = `
+          <table class="stock-table">
+            <thead>
+              <tr>
+                <th>Ürün Adı</th>
+                <th>Barkod</th>
+                <th>Mevcut Stok</th>
+                <th>Durum</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${critical.map(p => row(p, 'critical')).join('')}
+              ${warning.map(p => row(p, 'warning')).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        console.error('Kritik stok listesi yüklenemedi:', e);
+        el.innerHTML = '<p class="stock-empty">Liste yüklenemedi.</p>';
+      }
+    }
+
+    async function loadSktList() {
+      const el = document.getElementById('skt-list');
+      if (!el) return;
+      try {
+        const res = await fetch('/api/alerts/skt', { headers: authHeaders() });
+        const data = await res.json();
+        const expired = data.expired || [];
+        const items = data.items || [];
+        if (expired.length === 0 && items.length === 0) {
+          el.innerHTML = '<p class="stock-empty">Tarihi geçmiş veya önümüzdeki 30 günde SKT dolacak ürün yok.</p>';
+          return;
+        }
+        const allItems = [...expired, ...items];
+        const fmtDate = (d) => {
+          if (!d) return '-';
+          const s = String(d).split('T')[0];
+          if (!s) return '-';
+          const parts = s.split('-');
+          if (parts.length === 3) return parts[2] + '.' + parts[1] + '.' + parts[0];
+          return s;
+        };
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const getDaysDiff = (d) => {
+          if (!d) return null;
+          const s = String(d).split('T')[0];
+          if (!s) return null;
+          const exp = new Date(s);
+          exp.setHours(0, 0, 0, 0);
+          return Math.ceil((exp - today) / (24 * 60 * 60 * 1000));
+        };
+        const daysLeftText = (diff) => {
+          if (diff === null) return '-';
+          if (diff < 0) return 'Geçti';
+          if (diff === 0) return 'Bugün';
+          return diff + ' gün';
+        };
+        const getSktRow = (p) => {
+          const diff = getDaysDiff(p.expiry_date);
+          const isExpired = diff !== null && diff < 0;
+          const isCritical = diff !== null && diff >= 0 && diff < 15;
+          const isWarning = diff !== null && diff >= 15 && diff <= 30;
+          const rowClass = isExpired ? 'skt-expired' : (isCritical ? 'skt-critical' : (isWarning ? 'skt-warning' : ''));
+          const badgeClass = isExpired ? 'expired' : (isCritical ? 'critical' : 'warning');
+          const badgeLabel = isExpired ? 'Tarihi geçen ürün' : (isCritical ? 'Kritik' : 'Uyarı seviyesi');
+          const badge = (isExpired || isCritical || isWarning) ? `<span class="skt-badge ${badgeClass}">${badgeLabel}</span>` : '-';
+          return `<tr class="${rowClass}">
+            <td>${escapeHtml(p.name || '-')}</td>
+            <td>${fmtDate(p.expiry_date)}</td>
+            <td>${daysLeftText(diff)}</td>
+            <td>${badge}</td>
+            <td>${Number(p.stock_quantity)}</td>
+          </tr>`;
+        };
+        el.innerHTML = `
+          <table class="skt-table">
+            <thead>
+              <tr>
+                <th>Ürün Adı</th>
+                <th>Son Tüketim Tarihi</th>
+                <th>Kalan Gün</th>
+                <th>Durum</th>
+                <th>Stok</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${allItems.map(p => getSktRow(p)).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        console.error('SKT listesi yüklenemedi:', e);
+        el.innerHTML = '<p class="stock-empty">Liste yüklenemedi.</p>';
+      }
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    async function loadProfitLoss() {
+      const start = document.getElementById('report-start').value || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+      const end = document.getElementById('report-end').value || new Date().toISOString().split('T')[0];
+      const res = await fetch(`/api/reports/profit-loss?startDate=${start}&endDate=${end}`, { headers: authHeaders() });
+      const d = await res.json();
+      document.getElementById('profit-loss-result').innerHTML = `
+        <p><strong>Gelir (Satış):</strong> ${fmt(d.gelir)} ₺</p>
+        <p><strong>Gider (Alış):</strong> ${fmt(d.gider)} ₺</p>
+        <p><strong>Kâr/Zarar:</strong> <span style="color:${d.karZarar>=0?'#4ade80':'#f97373'}">${fmt(d.karZarar)} ₺</span></p>
+      `;
+    }
+
+    async function loadTopProducts() {
+      const el = document.getElementById('top-products-list');
+      const start = document.getElementById('top-products-start').value || new Date(Date.now() - 365*24*60*60*1000).toISOString().split('T')[0];
+      const end = document.getElementById('top-products-end').value || new Date().toISOString().split('T')[0];
+      try {
+        const res = await fetch(`/api/analytics/top-products?startDate=${start}&endDate=${end}&limit=10`, { headers: authHeaders() });
+        const { data } = await res.json();
+        if (!data || data.length === 0) {
+          el.innerHTML = '<p class="stock-empty">Seçilen dönemde satış verisi yok.</p>';
+          return;
+        }
+        el.innerHTML = `
+          <table class="skt-table" style="margin-top:12px;">
+            <thead><tr><th>#</th><th>Ürün</th><th>Adet</th><th>Tutar (₺)</th></tr></thead>
+            <tbody>
+              ${data.map((r, i) => `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td>${escapeHtml(r.name)}</td>
+                  <td>${Number(r.total_quantity).toLocaleString('tr-TR')}</td>
+                  <td>${fmt(r.total_amount)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        console.error('En çok satan ürünler yüklenemedi:', e);
+        el.innerHTML = '<p class="stock-empty">Liste yüklenemedi.</p>';
+      }
+    }
+
+    (function init() {
+      const today = new Date().toISOString().split('T')[0];
+      const monthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+      document.getElementById('daily-start').value = monthAgo;
+      document.getElementById('daily-end').value = today;
+      document.getElementById('report-start').value = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+      document.getElementById('report-end').value = today;
+      var topStart = document.getElementById('top-products-start');
+      var topEnd = document.getElementById('top-products-end');
+      if (topStart) topStart.value = monthAgo;
+      if (topEnd) topEnd.value = today;
+      const sel = document.getElementById('monthly-year');
+      for (let y = new Date().getFullYear(); y >= new Date().getFullYear() - 5; y--) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        if (y === new Date().getFullYear()) opt.selected = true;
+        sel.appendChild(opt);
+      }
+      loadDashboard();
+      loadDailyChart();
+      loadMonthlyChart();
+      var cProfit = document.getElementById('card-profit');
+      if (cProfit && window._userRole !== 'admin') cProfit.style.display = 'none';
+      if (window._userRole === 'admin' || window._userRole === 'kasa' || window._userRole === 'tedarik') {
+        loadDailyChart();
+        loadMonthlyChart();
+      }
+      if (window._userRole === 'admin' || window._userRole === 'kasa') {
+        loadTopProducts();
+      }
+      if (window._userRole === 'tedarik') {
+        var c4 = document.getElementById('card-top-products');
+        if (c4) c4.style.display = 'none';
+      }
+      if (window._userRole !== 'admin' && window._userRole !== 'kasa' && window._userRole !== 'tedarik') {
+        var c1 = document.getElementById('card-daily');
+        var c2 = document.getElementById('card-monthly');
+        var c4 = document.getElementById('card-top-products');
+        if (c1) c1.style.display = 'none';
+        if (c2) c2.style.display = 'none';
+        if (c4) c4.style.display = 'none';
+      }
+      loadCriticalStock();
+      loadSktList();
+    })();
+  </script>
+</body>
+</html>
